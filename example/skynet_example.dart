@@ -23,7 +23,8 @@ void main() async {
     SkyFile(
       content: utf8.encode('Hello, world!'), // The content you want to store
       filename: fileID.filename,
-      type: 'text/plain', // Content type (Other examples: application/json or image/png)
+      type:
+          'text/plain', // Content type (Other examples: application/json or image/png)
     ),
   );
   print(res);

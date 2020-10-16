@@ -1,6 +1,6 @@
 # Skynet SDK for Dart
 
-Use Sia Skynet and SkyDB in your Dart and Flutter projects.
+Use Sia Skynet and SkyDB in your Dart and Flutter projects (Decentralized CDN and database)
 
 This package allows you to use the decentralized SkyDB (https://blog.sia.tech/skydb-a-mutable-database-for-the-decentralized-web-7170beeaa985) and upload files to Skynet.
 
@@ -8,7 +8,7 @@ This package allows you to use the decentralized SkyDB (https://blog.sia.tech/sk
 
 ```yaml
 dependencies:
-  skynet: ^1.0.0
+  skynet: ^1.0.1
 ```
 
 ## Usage
@@ -39,7 +39,8 @@ void main() async {
     SkyFile(
       content: utf8.encode('Hello, world!'), // The content you want to store
       filename: fileID.filename,
-      type: 'text/plain', // Content type (Other examples: application/json or image/png)
+      type:
+          'text/plain', // Content type (Other examples: application/json or image/png)
     ),
   );
   print(res);

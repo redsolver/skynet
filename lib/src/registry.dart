@@ -19,8 +19,6 @@ class RegistryValue {
   RegistryValue({this.tweak, this.data, this.revision});
 
   Uint8List hash() {
-
-
     final list = Uint8List.fromList([
       ...tweak,
       ...withPadding(data.length),
@@ -46,7 +44,6 @@ Future<SignedRegistryValue> lookupRegistry(
   User user,
   FileID fileID,
 ) async {
-
   final uri = Uri.https(SkynetConfig.host, unencodedPath, {
     'publickey': 'ed25519:${user.id}',
     'fileid': hex.encode(utf8.encode(json.encode(
@@ -81,7 +78,6 @@ Future<bool> updateRegistry(
 ) async {
   final uri = Uri.https(SkynetConfig.host, unencodedPath);
 
-
   final res = await http.post(uri,
       body: json.encode({
         'publickey': {
@@ -93,8 +89,6 @@ Future<bool> updateRegistry(
         'data': srv.value.data,
         'signature': srv.signature.bytes,
       }));
-
-
 
   if (res.statusCode == 204) {
     return true;

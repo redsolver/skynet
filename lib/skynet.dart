@@ -1,4 +1,4 @@
-/// Use Sia Skynet and SkyDB in your Dart and Flutter projects.
+/// Use Sia Skynet and SkyDB in your Dart and Flutter projects (Decentralized CDN and database)
 library skynet;
 
 export 'src/skydb.dart';

@@ -1,6 +1,6 @@
 name: skynet
-description: Use Sia Skynet and SkyDB in your Dart and Flutter projects.
-version: 1.0.0
+description: Use Sia Skynet and SkyDB in your Dart and Flutter projects (Decentralized CDN and database)
+version: 1.0.1
 homepage: https://github.com/redsolver/skynet
 
 environment:

@@ -116,8 +116,6 @@ class FileID {
       };
 
   Uint8List hash() {
- 
-
     final list = Uint8List.fromList([
       ...withPadding(version),
       ...withPadding(applicationID.length),
