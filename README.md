@@ -8,7 +8,7 @@ This package allows you to use the decentralized SkyDB (https://blog.sia.tech/sk
 
 ```yaml
 dependencies:
-  skynet: ^1.0.1
+  skynet: ^1.0.2
 ```
 
 ## Usage

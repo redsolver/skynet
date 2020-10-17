@@ -6,6 +6,8 @@ import 'package:convert/convert.dart';
 import 'package:crypto/crypto.dart';
 
 import 'package:cryptography/cryptography.dart' hide sha1;
+import 'package:encode_endian/base.dart';
+import 'package:encode_endian/encode_endian.dart';
 import 'package:password_hash/password_hash.dart';
 
 import 'package:http/http.dart' as http;
@@ -135,9 +137,7 @@ class FileID {
 }
 
 List<int> withPadding(int i) {
-  if (i > 255) throw Exception('i too large');
-
-  return [i, 0, 0, 0, 0, 0, 0, 0];
+  return encodeEndian(i, 8, endianType: EndianType.littleEndian);
 }
 
 // User represents a user entity and can be used to sign.
