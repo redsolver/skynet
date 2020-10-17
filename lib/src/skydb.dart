@@ -149,22 +149,33 @@ class User {
   PublicKey publicKey;
   PrivateKey get privateKey => keyPair.privateKey;
 
+  List<int> seed;
+
   User.fromId(String userId) {
     id = userId;
     publicKey = PublicKey(hex.decode(userId));
   }
 
+  User.fromSeed(List<int> seed) {
+    keyPair = ed25519.newKeyPairFromSeedSync(PrivateKey(seed));
+
+    publicKey = keyPair.publicKey;
+    id = hex.encode(publicKey.bytes);
+  }
+
   // NOTE: username should be the user's email address as ideally it's unique
-  User(String username, String password) {
+  User(String username, String password, {bool keepSeed = false}) {
     final generator =
         PBKDF2(/* hashAlgorithm: Sha256._() */ hashAlgorithm: sha1);
 
-    final seed = generator.generateKey(password, username, 1000, 32);
+    seed = generator.generateKey(password, username, 1000, 32);
 
     keyPair = ed25519.newKeyPairFromSeedSync(PrivateKey(seed));
 
     publicKey = keyPair.publicKey;
     id = hex.encode(publicKey.bytes);
+
+    if (!keepSeed) seed = null;
   }
 
   Future<Signature> sign(List<int> message) {
