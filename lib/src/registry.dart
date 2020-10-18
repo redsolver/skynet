@@ -56,7 +56,7 @@ Future<SignedRegistryValue> lookupRegistry(
   if (res.statusCode == 200) {
     final data = json.decode(res.body);
 
-    return SignedRegistryValue(
+    final srv = SignedRegistryValue(
       value: RegistryValue(
         tweak: hex.decode(data['tweak']),
         data: hex.decode(data['data']),
@@ -65,6 +65,12 @@ Future<SignedRegistryValue> lookupRegistry(
       signature:
           Signature(hex.decode(data['signature']), publicKey: user.publicKey),
     );
+
+    final verified = await ed25519.verify(srv.value.hash(), srv.signature);
+
+    if (!verified) throw Exception('Invalid signature found');
+
+    return srv;
   } else if (res.statusCode == 404) {
     return null;
   }
