@@ -1,3 +1,9 @@
+## 2.0.0
+
+- WebSocket Support
+- Support for the new datakey format
+- Bug fixes and optimizations
+
 ## 1.0.4
 
 - All signatures are now automatically verified
