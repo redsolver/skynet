@@ -84,8 +84,6 @@ Future<String> uploadDirectory(
 
     final mimeType = lookupMimeType(filename);
 
-    print(mimeType);
-
     var multipartFile = http.MultipartFile(
       'file',
       stream,
