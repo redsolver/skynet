@@ -20,6 +20,7 @@ dependencies:
   web_socket_channel: ^1.1.0
   pinenacl:
     git: https://github.com/redsolver/pinenacl-dart
-    
+  mime: ^0.9.7
+
 dev_dependencies:
   test: ^1.15.4

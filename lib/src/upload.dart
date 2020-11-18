@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
+import 'package:mime/mime.dart';
 
 import 'file.dart';
 import 'config.dart';
@@ -40,8 +41,16 @@ Future<String> uploadFileWithStream(
   var stream = http.ByteStream(readStream);
 
   var request = http.MultipartRequest("POST", uri);
-  var multipartFile =
-      http.MultipartFile('file', stream, length, filename: file.filename);
+
+  final mimeType = lookupMimeType(file.filename ?? '');
+
+  var multipartFile = http.MultipartFile(
+    'file',
+    stream,
+    length,
+    filename: file.filename,
+    contentType: mimeType == null ? null : MediaType.parse(mimeType),
+  );
 
   request.files.add(multipartFile);
   var response = await request.send();
@@ -73,8 +82,17 @@ Future<String> uploadDirectory(
   for (final filename in fileStreams.keys) {
     var stream = http.ByteStream(fileStreams[filename]);
 
-    var multipartFile = http.MultipartFile('file', stream, lengths[filename],
-        filename: filename);
+    final mimeType = lookupMimeType(filename);
+
+    print(mimeType);
+
+    var multipartFile = http.MultipartFile(
+      'file',
+      stream,
+      lengths[filename],
+      filename: filename,
+      contentType: mimeType == null ? null : MediaType.parse(mimeType),
+    );
 
     request.files.add(multipartFile);
   }
