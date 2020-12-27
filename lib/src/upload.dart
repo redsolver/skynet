@@ -11,11 +11,14 @@ Future<String> uploadFile(SkyFile file) async {
   var uri = Uri.https(SkynetConfig.host, '/skynet/skyfile');
 
   var request = http.MultipartRequest("POST", uri);
+
+  final mimeType = file.type ?? lookupMimeType(file.filename ?? '');
+
   var multipartFile = http.MultipartFile.fromBytes(
     'file',
     file.content,
     filename: file.filename,
-    // contentType: MediaType.parse(file.type),
+    contentType: mimeType == null ? null : MediaType.parse(mimeType),
   );
 
   request.files.add(multipartFile);

@@ -171,7 +171,7 @@ class SkyDBoverWS {
     if (revision == null) {
       if (!streams.containsKey(keyStr))
         throw Exception(
-            'You need to subscribe to a SkyDB entry before updating it!');
+            'You need to subscribe to a SkyDB entry before updating it! (datakey: $datakey)');
     }
 
     // print('update to $value');
@@ -205,7 +205,11 @@ class SkyDBoverWS {
 
     final res = await http.get(Uri.https(SkynetConfig.host, '$skylink'));
 
+    // print('downloadFileFromRegistryEntry HTTP ${res.statusCode}');
+
     final metadata = json.decode(res.headers['skynet-file-metadata']);
+
+    // print('downloadFileFromRegistryEntry metadata ${metadata}');
 
     final file = SkyFile(
         content: res.bodyBytes,
