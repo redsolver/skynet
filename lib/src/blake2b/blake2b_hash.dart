@@ -11,8 +11,9 @@
 ///
 import 'dart:typed_data';
 
+import 'package:convert/convert.dart';
+
 import 'blake2b.dart';
-import 'package:hex/hex.dart';
 
 class Blake2bHash {
   static final int _size = 32;
@@ -20,17 +21,17 @@ class Blake2bHash {
   static final int _digestSize = _size * 8;
 
   // hash from hex string to bytes
-  static Uint8List hashHexString(String hex) {
-    if (null == hex) {
+  static Uint8List hashHexString(String hexStr) {
+    if (null == hexStr) {
       return null;
     }
-    var bytes = HEX.decode(hex);
+    var bytes = hex.decode(hexStr);
     return hash(bytes, 0, bytes.length);
   }
 
   // hash from hex string to hex string
-  static String hashHexString2HexString(String hex) {
-    return HEX.encode(hashHexString(hex));
+  static String hashHexString2HexString(String hexStr) {
+    return hex.encode(hashHexString(hexStr));
   }
 
   // hash from utf8 string to bytes
@@ -44,7 +45,7 @@ class Blake2bHash {
 
   // hash from utf8 string to hex string
   static String hashUtf8String2HexString(String string) {
-    return HEX.encode(hashUtf8String(string));
+    return hex.encode(hashUtf8String(string));
   }
 
   static Uint8List hashWithDigestSize(int digestSize, Uint8List message) {

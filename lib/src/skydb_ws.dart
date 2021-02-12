@@ -107,9 +107,9 @@ class SkyDBoverWS {
   }
 
   void _retry() async {
-    print('Lost connection. Retrying in 3 seconds...');
+    print('Lost connection. Retrying in 1 second...');
 
-    await Future.delayed(Duration(seconds: 3));
+    await Future.delayed(Duration(seconds: 1));
     connect();
   }
 

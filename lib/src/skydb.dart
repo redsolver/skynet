@@ -262,6 +262,10 @@ class SkynetUser {
     );
   }
 
+  static List<int> generateRandomKey() {
+    return Utils.randombytes(pinenacl.SecretBox.keyLength);
+  }
+
   List<int> generateOneTimeKey() {
     return Utils.randombytes(pinenacl.SecretBox.keyLength);
   }

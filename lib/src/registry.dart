@@ -104,14 +104,13 @@ Uint8List hashDatakey(String datakey) {
   );
 }
 
-Future<SignedRegistryEntry> getEntry(
-  SkynetUser user,
-  String datakey,
-) async {
+Future<SignedRegistryEntry> getEntry(SkynetUser user, String datakey,
+    {String hashedDatakey}) async {
   final uri = Uri.https(SkynetConfig.host, unencodedPath, {
     'publickey': 'ed25519:${user.id}',
-    'datakey': hex.encode(hashDatakey(
-        datakey)) /* hex.encode(utf8.encode(json.encode(
+    'datakey': hashedDatakey ??
+        hex.encode(hashDatakey(
+            datakey)) /* hex.encode(utf8.encode(json.encode(
       fileID.toJson(),
     ))) */
     ,
@@ -133,6 +132,8 @@ Future<SignedRegistryEntry> getEntry(
         signature:
             Signature(hex.decode(data['signature']), publicKey: user.publicKey),
       );
+
+      if (hashedDatakey != null) return srv;
 
       final verified = await ed25519.verify(srv.entry.hash(), srv.signature);
 
