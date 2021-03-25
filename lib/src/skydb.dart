@@ -4,26 +4,24 @@ import 'dart:typed_data';
 
 import 'package:convert/convert.dart';
 
-import 'package:crypto/crypto.dart';
-
-import 'package:cryptography/cryptography.dart' hide sha1;
-import 'package:encode_endian/base.dart';
-import 'package:encode_endian/encode_endian.dart';
+import 'package:cryptography/cryptography.dart';
 import 'package:password_hash/password_hash.dart';
 
 import 'package:pinenacl/api.dart' as pinenacl;
-import 'package:pinenacl/public.dart' as pinenacl;
+import 'package:pinenacl/ed25519.dart' as pinenacl;
+import 'package:pinenacl/src/authenticated_encryption/secret.dart' as pinenacl;
+import 'package:pinenacl/src/authenticated_encryption/public.dart' as pinenacl;
 
 import 'package:http/http.dart' as http;
-import 'package:pinenacl/secret.dart' as pinenacl;
-import 'package:pinenacl/utils.dart';
-import 'blake2b/blake2b_hash.dart';
+import 'encode_endian/encode_endian.dart';
+
+import 'encode_endian/base.dart';
 import 'file.dart';
 import 'upload.dart';
 
 import 'registry.dart';
 import 'config.dart';
-
+/* 
 // FILEID_V1 represents version 1 of the FileID object
 const FILEID_V1 = 1;
 
@@ -41,19 +39,21 @@ extension FileTypeID on FileType {
       return null;
     }
   }
-}
+} */
 
-FileType getFileTypeFromID(int id) {
+/* FileType getFileTypeFromID(int id) {
   if (id == 1) return FileType.PublicUnencrypted;
 
   throw Exception('Invalid file type (Not PublicUnencrypted)');
-}
+} */
 // getFile will lookup the entry for given skappID and filename, if it exists it
 // will try and download the file behind the skylink it has found in the entry.
 
-Future<SkyFile> getFile(SkynetUser user, String datakey) async {
+Future<SkyFile> getFile(SkynetUser user, String datakey,
+    {int timeoutInSeconds = 10}) async {
   // lookup the registry entry
-  final existing = await getEntry(user, datakey);
+  final existing =
+      await getEntry(user, datakey, timeoutInSeconds: timeoutInSeconds);
   if (existing == null) {
     throw Exception('not found');
   }
@@ -63,7 +63,9 @@ Future<SkyFile> getFile(SkynetUser user, String datakey) async {
   // download the data in that Skylink
   final res = await http.get(Uri.https(SkynetConfig.host, '$skylink'));
 
-  final metadata = json.decode(res.headers['skynet-file-metadata']);
+  // TODO Check if response is ok
+
+  final metadata = json.decode(res.headers['skynet-file-metadata']!);
 
   return SkyFile(
       content: res.bodyBytes,
@@ -74,9 +76,13 @@ Future<SkyFile> getFile(SkynetUser user, String datakey) async {
 // setFile uploads a file and sets updates the registry
 Future<bool> setFile(SkynetUser user, String datakey, SkyFile file) async {
   // upload the file to acquire its skylink
-  final skylink = await uploadFile(file);
+  final skylink = await (uploadFile(file));
 
-  SignedRegistryEntry existing;
+  if (skylink == null) {
+    throw 'Upload failed';
+  }
+
+  SignedRegistryEntry? existing;
 
   try {
     // fetch the current value to find out the revision
@@ -92,8 +98,8 @@ Future<bool> setFile(SkynetUser user, String datakey, SkyFile file) async {
   // build the registry value
   final rv = RegistryEntry(
     datakey: datakey,
-    data: utf8.encode(skylink),
-    revision: (existing?.entry?.revision ?? 0) + 1,
+    data: utf8.encode(skylink) as Uint8List,
+    revision: (existing?.entry.revision ?? 0) + 1,
   );
 
   // sign it
@@ -152,7 +158,7 @@ Future<bool> setFile(SkynetUser user, String datakey, SkyFile file) async {
 } */
 
 List<int> withPadding(int i) {
-  return encodeEndian(i, 8, endianType: EndianType.littleEndian);
+  return encodeEndian(i, 8, endianType: EndianType.littleEndian) as List<int>;
 }
 
 int decodeUint8(List<int> bytes) {
@@ -160,7 +166,7 @@ int decodeUint8(List<int> bytes) {
 
   int position = 0;
   for (final int i in bytes) {
-    result += i * pow(2, position);
+    result += i * (pow(2, position) as int);
 
     position += 8;
   }
@@ -170,24 +176,26 @@ int decodeUint8(List<int> bytes) {
 
 // User represents a user entity and can be used to sign.
 class SkynetUser {
-  String id;
+  final ed25519 = Ed25519();
 
-  KeyPair keyPair;
+  String? id;
 
-  PublicKey publicKey;
-  PrivateKey get privateKey => keyPair.privateKey;
+  late SimpleKeyPair keyPair;
 
-  List<int> seed;
+  late SimplePublicKey publicKey;
+  Future<List<int>> get privateKeySync => keyPair.extractPrivateKeyBytes();
 
-  pinenacl.PrivateKey sk;
-  pinenacl.PublicKey pk;
+  late List<int> seed;
+
+  late pinenacl.PrivateKey sk;
+  pinenacl.PublicKey? pk;
 
   SkynetUser.fromId(String userId) {
     id = userId;
-    publicKey = PublicKey(hex.decode(userId));
+    publicKey = SimplePublicKey(hex.decode(userId), type: KeyPairType.ed25519);
   }
 
-  SkynetUser.fromSeed(List<int> usedSeed) {
+  SkynetUser.fromSeedAsync(List<int> usedSeed) {
     seed = usedSeed;
 
     // print('fromSeed $seed');
@@ -199,29 +207,46 @@ class SkynetUser {
     print(skalice);
     print(pkalice); */
 
-    sk = pinenacl.PrivateKey.fromSeed(seed);
+    sk = pinenacl.PrivateKey(seed);
 
     // print(sk);
     //print(sk.publicKey);
 
     pk = sk.publicKey;
+  }
+  Future<void> init() async {
+    keyPair = await ed25519.newKeyPairFromSeed(seed);
 
-    keyPair = ed25519.newKeyPairFromSeedSync(PrivateKey(seed));
-
-    publicKey = keyPair.publicKey;
+    publicKey = await keyPair.extractPublicKey();
     id = hex.encode(publicKey.bytes);
   }
 
   // see https://github.com/NebulousLabs/skynet-js/blob/f500b5cf879916b3ae26651d714d373414f82497/src/crypto.ts#L75
-  static Uint8List skyIdSeedToEd25519Seed(String seedStringInBase64) {
+  static Future<Uint8List> skyIdSeedToEd25519Seed(
+      String seedStringInBase64) async {
+    // TODO Test this
+    /*     String seedStringInBase64) async {
+    final hasher = DartPbkdf2(
+        macAlgorithm: DartChacha20Poly1305AeadMacAlgorithm(),
+        iterations: 1000,
+        bits: 256);
+
+    final res = await hasher.deriveKey(
+      secretKey: SecretKey(sha256.convert(seedStringInBase64.codeUnits).bytes),
+      nonce: pinenacl.PineNaClUtils.randombytes(12),
+    );
+
+    return pinenacl.Uint8List.fromList(await res.extractBytes()); */
+
     final generator =
         PBKDF2(/* hashAlgorithm: Sha256._() */ /* hashAlgorithm: sha1 */);
 
-    return generator.generateKey(seedStringInBase64, '', 1000, 32);
+    return pinenacl.Uint8List.fromList(
+        generator.generateKey(seedStringInBase64, '', 1000, 32));
   }
 
   // NOTE: username should be the user's email address as ideally it's unique
-  @deprecated
+/*   @deprecated
   SkynetUser(String username, String password /* , {bool keepSeed = false} */) {
     final generator =
         PBKDF2(/* hashAlgorithm: Sha256._() */ hashAlgorithm: sha1);
@@ -231,16 +256,16 @@ class SkynetUser {
     sk = pinenacl.PrivateKey.fromSeed(seed);
     pk = sk.publicKey;
 
-    keyPair = ed25519.newKeyPairFromSeedSync(PrivateKey(seed));
+    keyPair = await Ed25519().newKeyPairFromSeed(PrivateKey(seed));
 
     publicKey = keyPair.publicKey;
     id = hex.encode(publicKey.bytes);
 
     // if (!keepSeed) seed = null;
-  }
+  } */
 
   Future<Signature> sign(List<int> message) {
-    return ed25519.sign(message, keyPair);
+    return ed25519.sign(message, keyPair: keyPair);
   }
 
   List<int> symEncrypt(List<int> key, List<int> message) {
@@ -257,21 +282,21 @@ class SkynetUser {
     final box = pinenacl.SecretBox(key);
 
     return box.decrypt(
-      encryptedMessage.sublist(24),
-      nonce: encryptedMessage.sublist(0, 24),
+      encryptedMessage.sublist(24) as Uint8List,
+      nonce: encryptedMessage.sublist(0, 24) as Uint8List?,
     );
   }
 
   static List<int> generateRandomKey() {
-    return Utils.randombytes(pinenacl.SecretBox.keyLength);
+    return pinenacl.PineNaClUtils.randombytes(pinenacl.SecretBox.keyLength);
   }
 
   List<int> generateOneTimeKey() {
-    return Utils.randombytes(pinenacl.SecretBox.keyLength);
+    return pinenacl.PineNaClUtils.randombytes(pinenacl.SecretBox.keyLength);
   }
 
   static List<int> generateSeed() {
-    return Utils.randombytes(32);
+    return pinenacl.PineNaClUtils.randombytes(32);
   }
 
   List<int> encrypt(List<int> message, List<int> theirPublicKey) {

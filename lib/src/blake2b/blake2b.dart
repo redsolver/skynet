@@ -35,7 +35,7 @@ class Blake2b {
     assert(key.length <= 64);
     this._buffer = Uint8List(Const.blockLengthBytes);
     if (null != key) {
-      this._key.addAll(key);
+      this._key!.addAll(key);
       this._keyLength = key.length;
 
       this._buffer.addAll(key);
@@ -53,16 +53,16 @@ class Blake2b {
 
     if (null != salt) {
       assert(salt.length == 16);
-      this._salt.addAll(salt);
+      this._salt!.addAll(salt);
     }
 
     if (null != personalization) {
       assert(personalization.length == 16);
-      this._personalization.addAll(personalization);
+      this._personalization!.addAll(personalization);
     }
 
     if (null != key) {
-      this._key.addAll(key);
+      this._key!.addAll(key);
       this._keyLength = key.length;
 
       this._buffer.addAll(key);
@@ -75,11 +75,11 @@ class Blake2b {
   // General parameters
   int _digestSize = 64; // 1- 64 bytes
   int _keyLength = 0; // 0 - 64 bytes for keyed hashing for MAC
-  Uint8List _salt; // new byte[16];
-  Uint8List _personalization; // new byte[16];
+  Uint8List? _salt; // new byte[16];
+  Uint8List? _personalization; // new byte[16];
 
   // The key
-  Uint8List _key;
+  Uint8List? _key;
 
   // whenever this buffer overflows, it will be processed
   // in the compress() function.
@@ -93,7 +93,7 @@ class Blake2b {
   List<Int64> _internalState = List<Int64>.filled(
       16, Int64.fromInts(0, 0)); // In the Blake2b paper it is called: v
 
-  List<Int64> _chainValue; // state vector, in the Blake2b paper it is called: h
+  List<Int64>? _chainValue; // state vector, in the Blake2b paper it is called: h
 
   Int64 _t0 = Int64.fromInts(
       0, 0); // holds last significant bits, counter (counts bytes)
@@ -128,8 +128,8 @@ class Blake2b {
       newChainValue.add(Const.blake2bIv[5]);
 
       if (null != _salt) {
-        newChainValue[4] ^= (ByteUtils.bytes2long(_salt, 0));
-        newChainValue[5] ^= (ByteUtils.bytes2long(_salt, 8));
+        newChainValue[4] ^= (ByteUtils.bytes2long(_salt!, 0));
+        newChainValue[5] ^= (ByteUtils.bytes2long(_salt!, 8));
       }
 
       // 6, 7
@@ -137,8 +137,8 @@ class Blake2b {
       newChainValue.add(Const.blake2bIv[7]);
 
       if (null != _personalization) {
-        newChainValue[6] ^= (ByteUtils.bytes2long(_personalization, 0));
-        newChainValue[7] ^= (ByteUtils.bytes2long(_personalization, 8));
+        newChainValue[6] ^= (ByteUtils.bytes2long(_personalization!, 0));
+        newChainValue[7] ^= (ByteUtils.bytes2long(_personalization!, 8));
       }
 
       _chainValue = newChainValue;
@@ -147,9 +147,9 @@ class Blake2b {
 
   void _initializeInternalState() {
     _internalState =
-        _arrayCopyI64(_chainValue, 0, _internalState, 0, _chainValue.length);
+        _arrayCopyI64(_chainValue, 0, _internalState, 0, _chainValue!.length);
     _internalState = _arrayCopyI64(
-        Const.blake2bIv, 0, _internalState, _chainValue.length, 4);
+        Const.blake2bIv, 0, _internalState, _chainValue!.length, 4);
 
     _internalState[12] = _t0 ^ Const.blake2bIv[4];
     _internalState[13] = _t1 ^ Const.blake2bIv[5];
@@ -167,7 +167,7 @@ class Blake2b {
     _buffer.fillRange(0, _buffer.length, 0);
 
     if (_key != null) {
-      _buffer.addAll(_key);
+      _buffer.addAll(_key!);
       _bufferPos = Const.blockLengthBytes; // zero padding
     }
     init();
@@ -175,14 +175,14 @@ class Blake2b {
 
   void clearKey() {
     if (null != _key) {
-      _key.fillRange(0, _key.length, 0);
+      _key!.fillRange(0, _key!.length, 0);
       _buffer.fillRange(0, _buffer.length, 0);
     }
   }
 
   void clearSalt() {
     if (null != _salt) {
-      _salt.fillRange(0, _salt.length, 0);
+      _salt!.fillRange(0, _salt!.length, 0);
     }
   }
 
@@ -273,8 +273,8 @@ class Blake2b {
     _internalState =
         List<Int64>.filled(_internalState.length, Int64.fromInts(0, 0));
 
-    for (int i = 0; i < _chainValue.length && (i * 8 < _digestSize); i++) {
-      Uint8List bytes = ByteUtils.long2bytes(_chainValue[i]);
+    for (int i = 0; i < _chainValue!.length && (i * 8 < _digestSize); i++) {
+      Uint8List bytes = ByteUtils.long2bytes(_chainValue![i]);
 
       if ((i * 8) < (_digestSize - 8)) {
         out = _arrayCopy(bytes, 0, out, outOffset + (i * 8), 8);
@@ -284,7 +284,7 @@ class Blake2b {
       }
     }
 
-    _chainValue = List<Int64>.filled(_chainValue.length, Int64.fromInts(0, 0));
+    _chainValue = List<Int64>.filled(_chainValue!.length, Int64.fromInts(0, 0));
 
     reset();
 
@@ -319,8 +319,8 @@ class Blake2b {
           9, 14);
     }
 
-    for (int offset = 0; offset < _chainValue.length; offset++) {
-      _chainValue[offset] = _chainValue[offset] ^
+    for (int offset = 0; offset < _chainValue!.length; offset++) {
+      _chainValue![offset] = _chainValue![offset] ^
           _internalState[offset] ^
           _internalState[offset + 8];
     }
@@ -353,10 +353,10 @@ class Blake2b {
     return dst;
   }
 
-  List<Int64> _arrayCopyI64(List<Int64> src, int srcOffset, List<Int64> dst,
+  List<Int64> _arrayCopyI64(List<Int64>? src, int srcOffset, List<Int64> dst,
       int dstOffset, int length) {
     for (var i = 0; i < length; i++) {
-      dst[dstOffset + i] = src[srcOffset + i];
+      dst[dstOffset + i] = src![srcOffset + i];
     }
     return dst;
   }

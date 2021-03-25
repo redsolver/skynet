@@ -7,10 +7,10 @@ import 'package:mime/mime.dart';
 import 'file.dart';
 import 'config.dart';
 
-Future<String> uploadFile(SkyFile file) async {
+Future<String?> uploadFile(SkyFile file) async {
   var uri = Uri.https(SkynetConfig.host, '/skynet/skyfile');
 
-  var request = http.MultipartRequest("POST", uri);
+  var request = http.MultipartRequest('POST', uri);
 
   final mimeType = file.type ?? lookupMimeType(file.filename ?? '');
 
@@ -37,7 +37,7 @@ Future<String> uploadFile(SkyFile file) async {
   return resData['skylink'];
 }
 
-Future<String> uploadFileWithStream(
+Future<String?> uploadFileWithStream(
     SkyFile file, int length, Stream<List<int>> readStream) async {
   var uri = Uri.https(SkynetConfig.host, '/skynet/skyfile');
 
@@ -71,7 +71,7 @@ Future<String> uploadFileWithStream(
   return resData['skylink'];
 }
 
-Future<String> uploadDirectory(
+Future<String?> uploadDirectory(
   Map<String, Stream<List<int>>> fileStreams,
   Map<String, int> lengths,
   String fname,
@@ -83,14 +83,14 @@ Future<String> uploadDirectory(
   var request = http.MultipartRequest("POST", uri);
 
   for (final filename in fileStreams.keys) {
-    var stream = http.ByteStream(fileStreams[filename]);
+    var stream = http.ByteStream(fileStreams[filename]!);
 
     final mimeType = lookupMimeType(filename);
 
     var multipartFile = http.MultipartFile(
       'file',
       stream,
-      lengths[filename],
+      lengths[filename]!,
       filename: filename,
       contentType: mimeType == null ? null : MediaType.parse(mimeType),
     );

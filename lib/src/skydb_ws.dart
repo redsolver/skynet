@@ -4,7 +4,6 @@ import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
-import 'package:cryptography/cryptography.dart';
 import 'package:skynet/skynet.dart';
 // import 'package:web_socket_channel/status.dart' as status;
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -28,7 +27,7 @@ enum ConnectionStateType {
 }
 
 class SkyDBoverWS {
-  WebSocketChannel channel;
+  late WebSocketChannel channel;
   String endpoint = 'wss://fra1.skydb.solver.cloud';
 
   Function onConnectionStateChange = () {};
@@ -76,13 +75,13 @@ class SkyDBoverWS {
 
       //  print(message);
 
-      final int op = message[0];
+      final int? op = message[0];
 
-      Uint8List data = message.sublist(1);
+      Uint8List? data = message.sublist(1);
 
       if (op == 3) {
         //   print('Received value');
-        final key = String.fromCharCodes(data.sublist(0, 64));
+        final key = String.fromCharCodes(data!.sublist(0, 64));
         final value = data.sublist(64);
 
         final srv = SignedRegistryEntry.fromBytes(value,
@@ -95,7 +94,7 @@ class SkyDBoverWS {
         revisionCache[key] = srv.entry.revision;
         // print(streams[key]);
 
-        streams[key].add(srv); // TODO Verify signature
+        streams[key]!.add(srv); // TODO Verify signature
       }
 
       // channel.sink.close(status.goingAway);
@@ -157,13 +156,13 @@ class SkyDBoverWS {
 
     final k = String.fromCharCodes(key);
 
-    streams[k].close();
+    streams[k]!.close();
 
     streams.remove(k);
   }
 
-  Future<void> update(SkynetUser user, String datakey, String value,
-      {int revision, Uint8List altValue}) async {
+  Future<void> update(SkynetUser user, String datakey, String? value,
+      {int? revision, Uint8List? altValue}) async {
     final key =
         Uint8List.fromList([...user.publicKey.bytes, ...hashDatakey(datakey)]);
     final keyStr = String.fromCharCodes(key);
@@ -179,7 +178,7 @@ class SkyDBoverWS {
     // build the registry value
     final rv = RegistryEntry(
       //tweak: fileID.hash(),
-      data: altValue ?? utf8.encode(value),
+      data: altValue ?? utf8.encode(value!) as Uint8List,
       revision: revision ?? ((revisionCache[keyStr] ?? 0) + 1),
     );
     rv.datakey = datakey;
@@ -193,7 +192,7 @@ class SkyDBoverWS {
   }
 
   Future<bool> setFile(SkynetUser user, String datakey, SkyFile file,
-      {int revision}) async {
+      {int? revision}) async {
     // upload the file to acquire its skylink
     final skylink = await uploadFile(file);
     await update(user, datakey, skylink, revision: revision);
@@ -207,7 +206,7 @@ class SkyDBoverWS {
 
     // print('downloadFileFromRegistryEntry HTTP ${res.statusCode}');
 
-    final metadata = json.decode(res.headers['skynet-file-metadata']);
+    final metadata = json.decode(res.headers['skynet-file-metadata']!);
 
     // print('downloadFileFromRegistryEntry metadata ${metadata}');
 

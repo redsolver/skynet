@@ -1,10 +1,17 @@
+// @dart=2.9
+
 import 'dart:convert';
+import 'package:convert/convert.dart';
 import 'package:skynet/skynet.dart';
 
 void main() async {
   SkynetConfig.host = 'siasky.net';
 
-  final user = SkynetUser('username', 'password');
+  final user = SkynetUser.fromSeedAsync(
+    hex.decode(
+        '788dddf5232807611557a3dc0fa5f34012c2650526ba91d55411a2b04ba56164'),
+  );
+  await user.init();
 
   print(user.id); // Public User ID
 

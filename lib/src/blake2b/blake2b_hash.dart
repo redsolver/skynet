@@ -22,11 +22,11 @@ class Blake2bHash {
 
   // hash from hex string to bytes
   static Uint8List hashHexString(String hexStr) {
-    if (null == hexStr) {
+    /* if (hexStr == null) {
       return null;
-    }
+    } */
     var bytes = hex.decode(hexStr);
-    return hash(bytes, 0, bytes.length);
+    return hash(bytes as Uint8List, 0, bytes.length);
   }
 
   // hash from hex string to hex string

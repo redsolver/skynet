@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:convert/convert.dart';
+import 'package:cryptography/cryptography.dart' hide MacAlgorithm;
 
-import 'package:cryptography/cryptography.dart';
 import 'package:http/http.dart' as http;
 
 import 'blake2b/blake2b_hash.dart';
@@ -13,13 +13,16 @@ final unencodedPath = '/skynet/registry';
 
 class RegistryEntry {
   //' Uint8List tweak;
-  String datakey;
-  Uint8List hashedDatakey;
+  String? datakey;
+  Uint8List? hashedDatakey;
 
-  Uint8List data;
-  int revision;
+  late Uint8List data;
+  late int revision;
 
-  RegistryEntry({/* this.tweak, */ this.datakey, this.data, this.revision});
+  RegistryEntry(
+      {/* this.tweak, */ this.datakey,
+      required this.data,
+      required this.revision});
 
   Uint8List toBytes() => Uint8List.fromList([
         ...withPadding(revision),
@@ -32,10 +35,10 @@ class RegistryEntry {
   }
 
   Uint8List hash() {
-    if (datakey != null) hashedDatakey = hashDatakey(datakey);
+    if (datakey != null) hashedDatakey = hashDatakey(datakey!);
 
     final list = Uint8List.fromList([
-      ...hashedDatakey,
+      ...hashedDatakey!,
       ...withPadding(data.length),
       ...data,
       ...withPadding(revision),
@@ -49,31 +52,33 @@ class RegistryEntry {
 }
 
 class SignedRegistryEntry {
-  RegistryEntry entry;
-  Signature signature;
+  late RegistryEntry entry;
+  Signature? signature;
 
   void setPublicKey(List<int> publicKey) {
-    signature = Signature(signature.bytes, publicKey: PublicKey(publicKey));
+    signature = Signature(signature!.bytes,
+        publicKey: SimplePublicKey(publicKey, type: KeyPairType.ed25519));
   }
 
   Uint8List toBytes() =>
-      Uint8List.fromList([...signature.bytes, ...entry.toBytes()]);
+      Uint8List.fromList([...signature!.bytes, ...entry.toBytes()]);
 
-  SignedRegistryEntry.fromBytes(List<int> bytes, {List<int> publicKeyBytes}) {
+  SignedRegistryEntry.fromBytes(List<int> bytes,
+      {required List<int> publicKeyBytes}) {
     signature = Signature(bytes.sublist(0, 64),
-        publicKey: publicKeyBytes == null ? null : PublicKey(publicKeyBytes));
+        publicKey: SimplePublicKey(publicKeyBytes, type: KeyPairType.ed25519));
 
     entry = RegistryEntry.fromBytes(bytes.sublist(64));
   }
 
   Map toJson() => {
         'datakey':
-            hex.encode(entry.hashedDatakey ?? hashDatakey(entry.datakey)),
+            hex.encode(entry.hashedDatakey ?? hashDatakey(entry.datakey!)),
         'data': hex.encode(entry.data),
         'revision': entry.revision,
-        'signature': hex.encode(signature.bytes),
+        'signature': hex.encode(signature!.bytes),
       };
-
+/* 
   SignedRegistryEntry.fromJson(Map m) {
     // TODO!
     signature = Signature(
@@ -87,8 +92,8 @@ class SignedRegistryEntry {
 
     if (m['datakey'] != null) entry.datakey = m['datakey'];
   }
-
-  SignedRegistryEntry({this.entry, this.signature});
+ */
+  SignedRegistryEntry({required this.entry, this.signature});
 }
 
 Uint8List hashDatakey(String datakey) {
@@ -104,8 +109,10 @@ Uint8List hashDatakey(String datakey) {
   );
 }
 
-Future<SignedRegistryEntry> getEntry(SkynetUser user, String datakey,
-    {String hashedDatakey}) async {
+final ed25519 = Ed25519();
+
+Future<SignedRegistryEntry?> getEntry(SkynetUser user, String datakey,
+    {String? hashedDatakey, int timeoutInSeconds = 10}) async {
   final uri = Uri.https(SkynetConfig.host, unencodedPath, {
     'publickey': 'ed25519:${user.id}',
     'datakey': hashedDatakey ??
@@ -119,14 +126,14 @@ Future<SignedRegistryEntry> getEntry(SkynetUser user, String datakey,
   // print(uri.toString());
 
   try {
-    final res = await http.get(uri).timeout(Duration(seconds: 10));
+    final res = await http.get(uri).timeout(Duration(seconds: timeoutInSeconds));
     if (res.statusCode == 200) {
       final data = json.decode(res.body);
 
       final srv = SignedRegistryEntry(
         entry: RegistryEntry(
           datakey: datakey,
-          data: hex.decode(data['data']),
+          data: hex.decode(data['data']) as Uint8List,
           revision: data['revision'],
         ),
         signature:
@@ -135,7 +142,8 @@ Future<SignedRegistryEntry> getEntry(SkynetUser user, String datakey,
 
       if (hashedDatakey != null) return srv;
 
-      final verified = await ed25519.verify(srv.entry.hash(), srv.signature);
+      final verified =
+          await ed25519.verify(srv.entry.hash(), signature: srv.signature!);
 
       if (!verified) throw Exception('Invalid signature found');
 
@@ -166,7 +174,7 @@ Future<bool> setEntry(
         'datakey': hex.encode(hashDatakey(datakey)),
         'revision': srv.entry.revision,
         'data': srv.entry.data,
-        'signature': srv.signature.bytes,
+        'signature': srv.signature!.bytes,
       }));
 
   if (res.statusCode == 204) {
