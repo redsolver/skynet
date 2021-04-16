@@ -74,7 +74,12 @@ Future<SkyFile> getFile(SkynetUser user, String datakey,
 }
 
 // setFile uploads a file and sets updates the registry
-Future<bool> setFile(SkynetUser user, String datakey, SkyFile file) async {
+Future<bool> setFile(
+  SkynetUser user,
+  String datakey,
+  SkyFile file, {
+  String? hashedDatakey,
+}) async {
   // upload the file to acquire its skylink
   final skylink = await (uploadFile(file));
 
@@ -86,7 +91,11 @@ Future<bool> setFile(SkynetUser user, String datakey, SkyFile file) async {
 
   try {
     // fetch the current value to find out the revision
-    final res = await getEntry(user, datakey);
+    final res = await getEntry(
+      user,
+      datakey,
+      hashedDatakey: hashedDatakey,
+    );
 
     existing = res;
   } catch (e) {
@@ -102,13 +111,22 @@ Future<bool> setFile(SkynetUser user, String datakey, SkyFile file) async {
     revision: (existing?.entry.revision ?? 0) + 1,
   );
 
+  if (hashedDatakey != null) {
+    rv.hashedDatakey = Uint8List.fromList(hex.decode(hashedDatakey));
+  }
+
   // sign it
   final sig = await user.sign(rv.hash());
 
   final srv = SignedRegistryEntry(signature: sig, entry: rv);
 
   // update the registry
-  final updated = await setEntry(user, datakey, srv);
+  final updated = await setEntry(
+    user,
+    datakey,
+    srv,
+    hashedDatakey: hashedDatakey,
+  );
 
   return updated;
 }

@@ -109,6 +109,20 @@ Uint8List hashDatakey(String datakey) {
   );
 }
 
+Uint8List hashRawDatakey(Uint8List datakey) {
+  final list = Uint8List.fromList([
+    ...withPadding(datakey.length),
+    ...datakey,
+  ]);
+
+  print('encodeString $list');
+
+  return Blake2bHash.hashWithDigestSize(
+    256,
+    list,
+  );
+}
+
 final ed25519 = Ed25519();
 
 Future<SignedRegistryEntry?> getEntry(SkynetUser user, String datakey,
@@ -126,7 +140,8 @@ Future<SignedRegistryEntry?> getEntry(SkynetUser user, String datakey,
   // print(uri.toString());
 
   try {
-    final res = await http.get(uri).timeout(Duration(seconds: timeoutInSeconds));
+    final res =
+        await http.get(uri).timeout(Duration(seconds: timeoutInSeconds));
     if (res.statusCode == 200) {
       final data = json.decode(res.body);
 
@@ -161,21 +176,24 @@ Future<SignedRegistryEntry?> getEntry(SkynetUser user, String datakey,
 Future<bool> setEntry(
   SkynetUser user,
   String datakey,
-  SignedRegistryEntry srv,
-) async {
+  SignedRegistryEntry srv, {
+  String? hashedDatakey,
+}) async {
   final uri = Uri.https(SkynetConfig.host, unencodedPath);
 
-  final res = await http.post(uri,
-      body: json.encode({
-        'publickey': {
-          'algorithm': 'ed25519',
-          'key': user.publicKey.bytes,
-        },
-        'datakey': hex.encode(hashDatakey(datakey)),
-        'revision': srv.entry.revision,
-        'data': srv.entry.data,
-        'signature': srv.signature!.bytes,
-      }));
+  final data = {
+    'publickey': {
+      'algorithm': 'ed25519',
+      'key': user.publicKey.bytes,
+    },
+    'datakey': hashedDatakey ?? hex.encode(hashDatakey(datakey)),
+    'revision': srv.entry.revision,
+    'data': srv.entry.data,
+    'signature': srv.signature!.bytes,
+  };
+  print(data);
+
+  final res = await http.post(uri, body: json.encode(data));
 
   if (res.statusCode == 204) {
     return true;

@@ -9,3 +9,7 @@ export 'src/registry.dart';
 export 'src/crypto.dart';
 
 export 'src/skydb_ws.dart';
+
+export 'src/skystandards/types.dart';
+export 'src/dacs/feed.dart';
+export 'src/mysky.dart';
