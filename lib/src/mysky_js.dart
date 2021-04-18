@@ -44,11 +44,11 @@ class JSMySky {
   external Future<void> logout();
   external Future<bool> requestLoginAccess();
 
-  external Future<JSONResponse> getJSON(
+  external Future<JSJSONResponse> getJSON(
     String path,
     /* opts?: CustomGetJSONOptions */
   );
-  external Future<JSONResponse> setJSON(
+  external Future<JSJSONResponse> setJSON(
     String path,
     JsonData json,
     /*  CustomSetJSONOptions opts */
@@ -67,8 +67,8 @@ class File {
   external Future<String> getJSON(String userId, String path);
 }
 
-@JS()
-class JSONResponse {
+@JS('JSONResponse')
+class JSJSONResponse {
   external get data;
   external String get skylink;
 }

@@ -21,3 +21,6 @@ void setValue(o, String key, value) => defineProperty(
 
 @JS('JSON.stringify')
 external String stringify(Object obj);
+
+@JS('JSON.parse')
+external Object parse(String str);

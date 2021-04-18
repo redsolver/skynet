@@ -1,13 +1,14 @@
 import 'dart:convert';
 
 import 'package:js/js_util.dart';
+import 'package:skynet/src/dacs/dac.dart';
 import 'package:skynet/src/mysky.dart';
 import 'package:skynet/src/skystandards/types.dart';
 import 'package:skynet/src/utils/js.dart';
 
 import 'js_feed.dart';
 
-class FeedDAC {
+class FeedDAC extends DAC {
   late JSFeedDAC _jsFeedDAC;
   FeedDAC() {
     _jsFeedDAC = JSFeedDAC();
