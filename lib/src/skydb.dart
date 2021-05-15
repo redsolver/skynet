@@ -17,6 +17,7 @@ import 'encode_endian/encode_endian.dart';
 
 import 'encode_endian/base.dart';
 import 'file.dart';
+import 'mysky/json.dart';
 import 'upload.dart';
 
 import 'registry.dart';
@@ -49,11 +50,34 @@ extension FileTypeID on FileType {
 // getFile will lookup the entry for given skappID and filename, if it exists it
 // will try and download the file behind the skylink it has found in the entry.
 
-Future<SkyFile> getFile(SkynetUser user, String datakey,
-    {int timeoutInSeconds = 10}) async {
+Future<SkyFile> getFile(
+  SkynetUser user,
+  String datakey, {
+  int timeoutInSeconds = 10,
+  String? hashedDatakey,
+}) async {
+  return (await getFileWithRevision(
+    user,
+    datakey,
+    hashedDatakey: hashedDatakey,
+    timeoutInSeconds: timeoutInSeconds,
+  ))
+      .data;
+}
+
+Future<DataWithRevision<SkyFile>> getFileWithRevision(
+  SkynetUser user,
+  String datakey, {
+  int timeoutInSeconds = 10,
+  String? hashedDatakey,
+}) async {
   // lookup the registry entry
-  final existing =
-      await getEntry(user, datakey, timeoutInSeconds: timeoutInSeconds);
+  final existing = await getEntry(
+    user,
+    datakey,
+    timeoutInSeconds: timeoutInSeconds,
+    hashedDatakey: hashedDatakey,
+  );
   if (existing == null) {
     throw Exception('not found');
   }
@@ -65,12 +89,15 @@ Future<SkyFile> getFile(SkynetUser user, String datakey,
 
   // TODO Check if response is ok
 
-  final metadata = json.decode(res.headers['skynet-file-metadata']!);
+  // final metadata = json.decode(res.headers['skynet-file-metadata']!);
 
-  return SkyFile(
-      content: res.bodyBytes,
-      filename: metadata['filename'],
-      type: res.headers['content-type']);
+  return DataWithRevision(
+    SkyFile(
+        content: res.bodyBytes,
+        // filename: metadata['filename'],
+        type: res.headers['content-type']),
+    existing.entry.revision,
+  );
 }
 
 // setFile uploads a file and sets updates the registry
@@ -209,8 +236,18 @@ class SkynetUser {
   pinenacl.PublicKey? pk;
 
   SkynetUser.fromId(String userId) {
+    if (userId.startsWith('ed25519-')) {
+      userId = userId.substring(8);
+    }
+    // print('SkynetUser.fromId($userId)');
     id = userId;
     publicKey = SimplePublicKey(hex.decode(userId), type: KeyPairType.ed25519);
+  }
+
+  static Future<SkynetUser> createFromSeedAsync(List<int> usedSeed) async {
+    final user = SkynetUser.fromSeedAsync(usedSeed);
+    await user.init();
+    return user;
   }
 
   SkynetUser.fromSeedAsync(List<int> usedSeed) {
