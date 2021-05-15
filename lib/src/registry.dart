@@ -173,6 +173,58 @@ Future<SignedRegistryEntry?> getEntry(SkynetUser user, String datakey,
   }
 }
 
+Future<bool> setEntryHelper(
+  SkynetUser user,
+  String datakey,
+  Uint8List value, {
+  String? hashedDatakey,
+  int? revision,
+}) async {
+  if (revision == null) {
+    SignedRegistryEntry? existing;
+
+    try {
+      // fetch the current value to find out the revision
+      final res = await getEntry(
+        user,
+        datakey,
+        hashedDatakey: hashedDatakey,
+      );
+
+      existing = res;
+    } catch (e) {
+      existing = null;
+    }
+    revision = (existing?.entry.revision ?? 0) + 1;
+  }
+
+  // build the registry value
+  final rv = RegistryEntry(
+    datakey: datakey,
+    data: value,
+    revision: revision,
+  );
+
+  if (hashedDatakey != null) {
+    rv.hashedDatakey = Uint8List.fromList(hex.decode(hashedDatakey));
+  }
+
+  // sign it
+  final sig = await user.sign(rv.hash());
+
+  final srv = SignedRegistryEntry(signature: sig, entry: rv);
+
+  // update the registry
+  final updated = await setEntry(
+    user,
+    datakey,
+    srv,
+    hashedDatakey: hashedDatakey,
+  );
+
+  return updated;
+}
+
 Future<bool> setEntry(
   SkynetUser user,
   String datakey,
@@ -191,7 +243,6 @@ Future<bool> setEntry(
     'data': srv.entry.data,
     'signature': srv.signature!.bytes,
   };
-  print(data);
 
   final res = await http.post(uri, body: json.encode(data));
 
