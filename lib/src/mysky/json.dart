@@ -2,10 +2,11 @@ import 'dart:convert';
 
 import 'package:convert/convert.dart';
 import 'package:pinenacl/api.dart';
-import 'package:skynet/skynet.dart';
+import 'package:skynet/src/file.dart';
 import 'package:skynet/src/mysky/tweak.dart';
 import 'package:skynet/src/registry.dart';
 import 'package:skynet/src/skydb.dart';
+import 'package:skynet/src/upload.dart';
 
 Future<dynamic?> getJSON(String userId, String path) async {
   // final path = 'snew.hns/asdf';
