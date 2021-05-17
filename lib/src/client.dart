@@ -75,7 +75,7 @@ class _SkynetClientFile {
   Future<bool> setJSON(
     SkynetUser skynetUser,
     String path,
-    Map data,
+    dynamic data,
     int revision, {
     String filename = 'skynet-dart-sdk.json',
   }) =>
