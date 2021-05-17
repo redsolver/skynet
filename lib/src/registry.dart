@@ -5,129 +5,22 @@ import 'package:cryptography/cryptography.dart' hide MacAlgorithm;
 
 import 'package:http/http.dart' as http;
 
-import 'blake2b/blake2b_hash.dart';
-import 'skydb.dart';
-import 'config.dart';
+import 'registry_classes.dart';
+import 'client.dart';
+import 'crypto.dart';
+import 'user.dart';
 
 final unencodedPath = '/skynet/registry';
-
-class RegistryEntry {
-  //' Uint8List tweak;
-  String? datakey;
-  Uint8List? hashedDatakey;
-
-  late Uint8List data;
-  late int revision;
-
-  RegistryEntry(
-      {/* this.tweak, */ this.datakey,
-      required this.data,
-      required this.revision});
-
-  Uint8List toBytes() => Uint8List.fromList([
-        ...withPadding(revision),
-        ...data,
-      ]);
-
-  RegistryEntry.fromBytes(List<int> bytes) {
-    revision = decodeUint8(bytes.sublist(0, 8));
-    data = Uint8List.fromList(bytes.sublist(8));
-  }
-
-  Uint8List hash() {
-    if (datakey != null) hashedDatakey = hashDatakey(datakey!);
-
-    final list = Uint8List.fromList([
-      ...hashedDatakey!,
-      ...withPadding(data.length),
-      ...data,
-      ...withPadding(revision),
-    ]);
-
-    return Blake2bHash.hashWithDigestSize(
-      256,
-      list,
-    );
-  }
-}
-
-class SignedRegistryEntry {
-  late RegistryEntry entry;
-  Signature? signature;
-
-  void setPublicKey(List<int> publicKey) {
-    signature = Signature(signature!.bytes,
-        publicKey: SimplePublicKey(publicKey, type: KeyPairType.ed25519));
-  }
-
-  Uint8List toBytes() =>
-      Uint8List.fromList([...signature!.bytes, ...entry.toBytes()]);
-
-  SignedRegistryEntry.fromBytes(List<int> bytes,
-      {required List<int> publicKeyBytes}) {
-    signature = Signature(bytes.sublist(0, 64),
-        publicKey: SimplePublicKey(publicKeyBytes, type: KeyPairType.ed25519));
-
-    entry = RegistryEntry.fromBytes(bytes.sublist(64));
-  }
-
-  Map toJson() => {
-        'datakey':
-            hex.encode(entry.hashedDatakey ?? hashDatakey(entry.datakey!)),
-        'data': hex.encode(entry.data),
-        'revision': entry.revision,
-        'signature': hex.encode(signature!.bytes),
-      };
-/* 
-  SignedRegistryEntry.fromJson(Map m) {
-    // TODO!
-    signature = Signature(
-      hex.decode(m['signature']),
-    );
-    entry = RegistryEntry(
-      /* tweak: hex.decode(m['tweak']), */
-      data: hex.decode(m['data']),
-      revision: m['revision'],
-    );
-
-    if (m['datakey'] != null) entry.datakey = m['datakey'];
-  }
- */
-  SignedRegistryEntry({required this.entry, this.signature});
-}
-
-Uint8List hashDatakey(String datakey) {
-  final l = utf8.encode(datakey);
-  final list = Uint8List.fromList([
-    ...withPadding(l.length),
-    ...l,
-  ]);
-
-  return Blake2bHash.hashWithDigestSize(
-    256,
-    list,
-  );
-}
-
-Uint8List hashRawDatakey(Uint8List datakey) {
-  final list = Uint8List.fromList([
-    ...withPadding(datakey.length),
-    ...datakey,
-  ]);
-
-  print('encodeString $list');
-
-  return Blake2bHash.hashWithDigestSize(
-    256,
-    list,
-  );
-}
-
 final ed25519 = Ed25519();
 
-Future<SignedRegistryEntry?> getEntry(SkynetUser user, String datakey,
-    {String? hashedDatakey, int timeoutInSeconds = 10}) async {
-  final uri = Uri.https(SkynetConfig.host, unencodedPath, {
+Future<SignedRegistryEntry?> getEntry(
+  SkynetUser user,
+  String datakey, {
+  String? hashedDatakey,
+  int timeoutInSeconds = 10,
+  required SkynetClient skynetClient,
+}) async {
+  final uri = Uri.https(skynetClient.portalHost, unencodedPath, {
     'publickey': 'ed25519:${user.id}',
     'datakey': hashedDatakey ??
         hex.encode(hashDatakey(
@@ -136,8 +29,6 @@ Future<SignedRegistryEntry?> getEntry(SkynetUser user, String datakey,
     ))) */
     ,
   });
-
-  // print(uri.toString());
 
   try {
     final res =
@@ -179,6 +70,7 @@ Future<bool> setEntryHelper(
   Uint8List value, {
   String? hashedDatakey,
   int? revision,
+  required SkynetClient skynetClient,
 }) async {
   if (revision == null) {
     SignedRegistryEntry? existing;
@@ -189,6 +81,7 @@ Future<bool> setEntryHelper(
         user,
         datakey,
         hashedDatakey: hashedDatakey,
+        skynetClient: skynetClient,
       );
 
       existing = res;
@@ -215,23 +108,25 @@ Future<bool> setEntryHelper(
   final srv = SignedRegistryEntry(signature: sig, entry: rv);
 
   // update the registry
-  final updated = await setEntry(
+  final updated = await setEntryRaw(
     user,
     datakey,
     srv,
     hashedDatakey: hashedDatakey,
+    skynetClient: skynetClient,
   );
 
   return updated;
 }
 
-Future<bool> setEntry(
+Future<bool> setEntryRaw(
   SkynetUser user,
   String datakey,
   SignedRegistryEntry srv, {
   String? hashedDatakey,
+  required SkynetClient skynetClient,
 }) async {
-  final uri = Uri.https(SkynetConfig.host, unencodedPath);
+  final uri = Uri.https(skynetClient.portalHost, unencodedPath);
 
   final data = {
     'publickey': {
@@ -249,6 +144,5 @@ Future<bool> setEntry(
   if (res.statusCode == 204) {
     return true;
   }
-  print(res.body);
   throw Exception('unexpected response status code ${res.statusCode}');
 }

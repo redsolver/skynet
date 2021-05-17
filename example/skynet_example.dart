@@ -1,11 +1,12 @@
-// @dart=2.9
-
 import 'dart:convert';
-import 'package:convert/convert.dart';
+import 'dart:typed_data';
+
 import 'package:skynet/skynet.dart';
 
+import 'package:convert/convert.dart';
+
 void main() async {
-  SkynetConfig.host = 'siasky.net';
+  final skynetClient = SkynetClient('siasky.net');
 
   final user = SkynetUser.fromSeedAsync(
     hex.decode(
@@ -17,21 +18,26 @@ void main() async {
 
   final datakey = 'my-awesome-datakey';
 
-  final currentFile = await getFile(user, datakey);
-  print(currentFile.asString);
+  try {
+    final currentFile = await skynetClient.skydb.getFile(user, datakey);
+    print(currentFile.asString);
+  } catch (e) {
+    // ! getFile throws an Exception if no data is found
+  }
 
-  final res = await setFile(
+  final success = await skynetClient.skydb.setFile(
     user,
     datakey,
     SkyFile(
-      content: utf8.encode('Hello, world!'), // The content you want to store
+      content: Uint8List.fromList(
+          utf8.encode('Hello, world!')), // The content you want to store
       filename: 'note.txt',
       type:
           'text/plain', // Content type (Other examples: application/json or image/png)
     ),
   );
-  print(res);
+  print(success); // Is true when the operation was successful
 
-  final updatedFile = await getFile(user, datakey);
+  final updatedFile = await skynetClient.skydb.getFile(user, datakey);
   print(updatedFile.asString);
 }

@@ -4,9 +4,15 @@ import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
-import 'package:skynet/skynet.dart';
 // import 'package:web_socket_channel/status.dart' as status;
 import 'package:web_socket_channel/web_socket_channel.dart';
+
+import 'crypto.dart';
+import 'file.dart';
+import 'mysky/tweak.dart';
+import 'registry_classes.dart';
+import 'client.dart';
+import 'user.dart';
 
 /*
 1: Subscribe to entry with key
@@ -14,6 +20,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 3: Receive entry update
 4: Cancel subscription
 X9: Add FileID to server cache
+11: Notify
  */
 
 class ConnectionState {
@@ -27,6 +34,10 @@ enum ConnectionStateType {
 }
 
 class SkyDBoverWS {
+  SkyDBoverWS(this.skynetClient);
+
+  SkynetClient skynetClient;
+
   late WebSocketChannel channel;
   String endpoint = 'wss://fra1.skydb.solver.cloud';
 
@@ -35,7 +46,7 @@ class SkyDBoverWS {
   ConnectionState connectionState = ConnectionState();
 
   void connect() {
-    print('connect...');
+    print('[SkyDBoverWS] connectint to ${endpoint} ...');
 
     try {
       channel = WebSocketChannel.connect(
@@ -70,29 +81,18 @@ class SkyDBoverWS {
     }
 
     channel.stream.listen((message) {
-      /*   print(message.runtimeType);
-      print(message); */
-
-      //  print(message);
-
       final int? op = message[0];
 
       Uint8List? data = message.sublist(1);
 
       if (op == 3) {
-        //   print('Received value');
         final key = String.fromCharCodes(data!.sublist(0, 64));
         final value = data.sublist(64);
 
         final srv = SignedRegistryEntry.fromBytes(value,
             publicKeyBytes: data.sublist(0, 32));
 
-        // srv.setPublicKey(data.sublist(0, 32));
-
-        // print(revisionCache[key]);
-
         revisionCache[key] = srv.entry.revision;
-        // print(streams[key]);
 
         streams[key]!.add(srv); // TODO Verify signature
       }
@@ -121,12 +121,27 @@ class SkyDBoverWS {
     channel.sink.add(Uint8List.fromList(data));
   }
 
+  bool isSubscribed(
+    SkynetUser user,
+    String path,
+  ) {
+    final key = Uint8List.fromList([
+      ...user.publicKey.bytes,
+      ...deriveDiscoverableTweak(path),
+    ]);
+
+    return streams.containsKey(String.fromCharCodes(key));
+  }
+
   Stream<SignedRegistryEntry> subscribe(
     SkynetUser user,
-    String datakey,
-  ) {
-    final key =
-        Uint8List.fromList([...user.publicKey.bytes, ...hashDatakey(datakey)]);
+    String datakey, {
+    String? path,
+  }) {
+    final key = Uint8List.fromList([
+      ...user.publicKey.bytes,
+      ...(path != null ? deriveDiscoverableTweak(path) : hashDatakey(datakey))
+    ]);
 
     final sc = StreamController<SignedRegistryEntry>.broadcast();
 
@@ -144,10 +159,13 @@ class SkyDBoverWS {
 
   void cancelSub(
     SkynetUser user,
-    String datakey,
-  ) {
-    final key =
-        Uint8List.fromList([...user.publicKey.bytes, ...hashDatakey(datakey)]);
+    String datakey, {
+    String? path,
+  }) {
+    final key = Uint8List.fromList([
+      ...user.publicKey.bytes,
+      ...(path != null ? deriveDiscoverableTweak(path) : hashDatakey(datakey))
+    ]);
 
     _send([
       4,
@@ -162,9 +180,11 @@ class SkyDBoverWS {
   }
 
   Future<void> update(SkynetUser user, String datakey, String? value,
-      {int? revision, Uint8List? altValue}) async {
-    final key =
-        Uint8List.fromList([...user.publicKey.bytes, ...hashDatakey(datakey)]);
+      {int? revision, Uint8List? altValue, String? path}) async {
+    final key = Uint8List.fromList([
+      ...user.publicKey.bytes,
+      ...(path != null ? deriveDiscoverableTweak(path) : hashDatakey(datakey))
+    ]);
     final keyStr = String.fromCharCodes(key);
 
     if (revision == null) {
@@ -173,15 +193,18 @@ class SkyDBoverWS {
             'You need to subscribe to a SkyDB entry before updating it! (datakey: $datakey)');
     }
 
-    // print('update to $value');
-
     // build the registry value
     final rv = RegistryEntry(
       //tweak: fileID.hash(),
       data: altValue ?? utf8.encode(value!) as Uint8List,
       revision: revision ?? ((revisionCache[keyStr] ?? 0) + 1),
     );
-    rv.datakey = datakey;
+
+    if (path != null) {
+      rv.hashedDatakey = deriveDiscoverableTweak(path);
+    } else {
+      rv.datakey = datakey;
+    }
 
     // sign it
     final sig = await user.sign(rv.hash());
@@ -191,28 +214,63 @@ class SkyDBoverWS {
     _send([2, ...key, ...srv.toBytes()]);
   }
 
+  void notify(SkynetUser skynetUser, String path) {
+    final key = Uint8List.fromList([
+      ...skynetUser.publicKey.bytes,
+      ...deriveDiscoverableTweak(path),
+    ]);
+
+    _send([11, ...key]);
+  }
+
   Future<bool> setFile(SkynetUser user, String datakey, SkyFile file,
       {int? revision}) async {
     // upload the file to acquire its skylink
-    final skylink = await uploadFile(file);
+    final skylink = await skynetClient.upload.uploadFile(file);
     await update(user, datakey, skylink, revision: revision);
+    return true;
+  }
+
+  Future<bool> setJSON(
+      SkynetUser skynetUser, String path, dynamic data, int revision,
+      {String filename = 'skynet-dart-sdk.json'}) async {
+    // final datakey = deriveDiscoverableTweak(path);
+
+    // upload the file to acquire its skylink
+    final skylink = await (skynetClient.upload.uploadFile(
+      SkyFile(
+        content: Uint8List.fromList(utf8.encode(json.encode({
+          '_data': data,
+          '_v': 2,
+        }))),
+        filename: filename,
+        type: 'application/json',
+      ),
+    ));
+
+    if (skylink == null) {
+      throw 'Upload failed';
+    }
+
+    await update(skynetUser, '', skylink, revision: revision, path: path);
+
     return true;
   }
 
   Future<SkyFile> downloadFileFromRegistryEntry(SignedRegistryEntry sre) async {
     final skylink = utf8.decode(sre.entry.data);
 
-    final res = await http.get(Uri.https(SkynetConfig.host, '$skylink'));
+    final res = await http.get(Uri.https(skynetClient.portalHost, '$skylink'));
 
     // print('downloadFileFromRegistryEntry HTTP ${res.statusCode}');
 
-    final metadata = json.decode(res.headers['skynet-file-metadata']!);
+    // final metadata = json.decode(res.headers['skynet-file-metadata']!);
 
     // print('downloadFileFromRegistryEntry metadata ${metadata}');
 
     final file = SkyFile(
         content: res.bodyBytes,
-        filename: metadata['filename'],
+        filename: null, //metadata['filename'],
         type: res.headers['content-type']);
 
     return file;

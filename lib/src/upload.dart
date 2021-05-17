@@ -3,12 +3,15 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
+import 'package:skynet/src/client.dart';
 
 import 'file.dart';
-import 'config.dart';
 
-Future<String?> uploadFile(SkyFile file) async {
-  var uri = Uri.https(SkynetConfig.host, '/skynet/skyfile');
+Future<String?> uploadFile(
+  SkyFile file, {
+  required SkynetClient skynetClient,
+}) async {
+  var uri = Uri.https(skynetClient.portalHost, '/skynet/skyfile');
 
   var request = http.MultipartRequest('POST', uri);
 
@@ -38,8 +41,12 @@ Future<String?> uploadFile(SkyFile file) async {
 }
 
 Future<String?> uploadFileWithStream(
-    SkyFile file, int length, Stream<List<int>> readStream) async {
-  var uri = Uri.https(SkynetConfig.host, '/skynet/skyfile');
+  SkyFile file,
+  int length,
+  Stream<List<int>> readStream, {
+  required SkynetClient skynetClient,
+}) async {
+  var uri = Uri.https(skynetClient.portalHost, '/skynet/skyfile');
 
   var stream = http.ByteStream(readStream);
 
@@ -74,9 +81,10 @@ Future<String?> uploadFileWithStream(
 Future<String?> uploadDirectory(
   Map<String, Stream<List<int>>> fileStreams,
   Map<String, int> lengths,
-  String fname,
-) async {
-  var uri = Uri.https(SkynetConfig.host, '/skynet/skyfile', {
+  String fname, {
+  required SkynetClient skynetClient,
+}) async {
+  var uri = Uri.https(skynetClient.portalHost, '/skynet/skyfile', {
     'filename': fname,
   });
 

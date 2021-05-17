@@ -2,20 +2,31 @@ import 'dart:convert';
 
 import 'package:convert/convert.dart';
 import 'package:pinenacl/api.dart';
+import 'package:skynet/src/client.dart';
+import 'package:skynet/src/data_with_revision.dart';
 import 'package:skynet/src/file.dart';
-import 'package:skynet/src/mysky/tweak.dart';
-import 'package:skynet/src/registry.dart';
-import 'package:skynet/src/skydb.dart';
-import 'package:skynet/src/upload.dart';
+import 'package:skynet/src/user.dart';
+import 'package:skynet/src/registry_classes.dart';
+import 'tweak.dart';
 
-Future<dynamic?> getJSON(String userId, String path) async {
+// import 'package:skynet/src/registry.dart';
+// import 'package:skynet/src/skydb.dart';
+// import 'package:skynet/src/upload.dart';
+
+Future<dynamic?> getJSON(
+  String userId,
+  String path, {
+  required SkynetClient skynetClient,
+}) async {
   // final path = 'snew.hns/asdf';
   try {
-    final result = await getSkyFile(userId, path);
+    final result = await getSkyFile(
+      userId,
+      path,
+      skynetClient: skynetClient,
+    );
     final data = json.decode(utf8.decode(result.data.content));
-    // print('getJSON $data');
     if (data.containsKey('_data')) {
-      // print('[debug] [getJSON] $userId/$path: $data');
       return data['_data'];
     }
     return data;
@@ -25,21 +36,21 @@ Future<dynamic?> getJSON(String userId, String path) async {
   }
 }
 
-class DataWithRevision<T> {
-  final T data;
-  final int revision;
-  DataWithRevision(this.data, this.revision);
-}
-
 Future<DataWithRevision<dynamic?>> getJSONWithRevision(
-    String userId, String path) async {
+  String userId,
+  String path, {
+  required SkynetClient skynetClient,
+}) async {
   try {
-    final result = await getSkyFile(userId, path);
+    final result = await getSkyFile(
+      userId,
+      path,
+      skynetClient: skynetClient,
+    );
 
     final data = json.decode(utf8.decode(result.data.content));
-    // print('getJSON $data');
+
     if (data.containsKey('_data')) {
-      // print('[debug] [getJSON] $userId/$path: $data');
       return DataWithRevision(data['_data'], result.revision);
     }
     return DataWithRevision(data, result.revision);
@@ -49,13 +60,19 @@ Future<DataWithRevision<dynamic?>> getJSONWithRevision(
   }
 }
 
-Future<bool> setJSON(SkynetUser skynetUser, String path, Map data, int revision,
-    {String filename = 'skynet-dart-sdk.json'}) async {
+Future<bool> setJSON(
+  SkynetUser skynetUser,
+  String path,
+  Map data,
+  int revision, {
+  String filename = 'skynet-dart-sdk.json',
+  required SkynetClient skynetClient,
+}) async {
   /*  try { */
   final datakey = deriveDiscoverableTweak(path);
 
   // upload the file to acquire its skylink
-  final skylink = await (uploadFile(
+  final skylink = await (skynetClient.upload.uploadFile(
     SkyFile(
       content: Uint8List.fromList(utf8.encode(json.encode({
         '_data': data,
@@ -101,10 +118,8 @@ Future<bool> setJSON(SkynetUser skynetUser, String path, Map data, int revision,
 
   final srv = SignedRegistryEntry(signature: sig, entry: rv);
 
-  //print(srv.toJson());
-
   // update the registry
-  final updated = await setEntry(
+  final updated = await skynetClient.registry.setEntryRaw(
     skynetUser,
     '',
     srv,
@@ -114,13 +129,15 @@ Future<bool> setJSON(SkynetUser skynetUser, String path, Map data, int revision,
   return updated;
 }
 
-// TODO setJson
-
-Future<DataWithRevision<SkyFile>> getSkyFile(String userId, String path) async {
+Future<DataWithRevision<SkyFile>> getSkyFile(
+  String userId,
+  String path, {
+  required SkynetClient skynetClient,
+}) async {
   // final path = 'snew.hns/asdf';
   final datakey = deriveDiscoverableTweak(path);
 
-  final res = await getFileWithRevision(
+  final res = await skynetClient.skydb.getFileWithRevision(
     SkynetUser.fromId(userId),
     '',
     hashedDatakey: hex.encode(datakey),

@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:convert/convert.dart';
 import 'package:pinenacl/api.dart';
 import 'package:skynet/skynet.dart';
+import 'package:skynet/src/crypto.dart';
+import 'package:skynet/src/registry_classes.dart';
 import 'package:test/test.dart';
 
 void main() async {

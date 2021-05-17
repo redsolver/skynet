@@ -1,27 +1,33 @@
 import 'dart:convert';
 
 import 'package:js/js_util.dart';
+import 'package:skynet/src/client.dart';
 import 'package:skynet/src/dacs/dac.dart';
-import 'package:skynet/src/mysky.dart';
+
 import 'package:skynet/src/skystandards/types.dart';
 import 'package:skynet/src/utils/js.dart';
+import 'generic.dart' as generic;
 
-import 'js_feed.dart';
+import 'js.dart';
 
 class FeedDAC extends DAC {
   late JSFeedDAC _jsFeedDAC;
-  FeedDAC() {
+  FeedDAC(SkynetClient skynetClient) : super(skynetClient) {
     _jsFeedDAC = JSFeedDAC();
   }
 
   JSFeedDAC get $internalObject => _jsFeedDAC;
 
+  Stream<List<Post>> loadPostsForUser(String userId) =>
+      generic.loadPostsForUser(
+        userId,
+        skynetClient: skynetClient,
+      );
+
   Future<String> createPost(
     PostContent content, {
     List<String> mentions = const [],
   }) async {
-    print(json.encode(content));
-
     final res = await promiseToFuture<CreatePostResponse>(
       _jsFeedDAC.createPost(json.encode(content)),
     );

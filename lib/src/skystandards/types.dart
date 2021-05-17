@@ -17,6 +17,9 @@ String postToJson(Post data) => json.encode(data.toJson()); */
  */
 @JsonSerializable(includeIfNull: false)
 class Post {
+  @JsonKey(ignore: true)
+  String? fullId;
+
   Post({
     this.commentTo,
     this.content,
