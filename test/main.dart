@@ -8,6 +8,34 @@ import 'package:skynet/src/registry_classes.dart';
 import 'package:test/test.dart';
 
 void main() async {
+  test('resolveSkylink', () {
+    final skynetClient = SkynetClient('siasky.net');
+
+    expect(
+      skynetClient.resolveSkylink(
+          'sia://LACYG8_AGc5UexNDGc86fjF-KkW9YncLRBkeu5nCeD1ltA'),
+      equals(
+        'https://siasky.net/LACYG8_AGc5UexNDGc86fjF-KkW9YncLRBkeu5nCeD1ltA',
+      ),
+    );
+
+    expect(
+      skynetClient.resolveSkylink(
+          'sia://skysend.hns'),
+      equals(
+        'https://skysend.hns.siasky.net',
+      ),
+    );
+
+    expect(
+      skynetClient.resolveSkylink(
+          'sia://skychess.hns/#/watch/4ba2676c7839990978b5ac8ee3a903e4702bea5cf17924e0b5f71d6f9a6d26ed'),
+      equals(
+        'https://skychess.hns.siasky.net/#/watch/4ba2676c7839990978b5ac8ee3a903e4702bea5cf17924e0b5f71d6f9a6d26ed',
+      ),
+    );
+  });
+
   group('SkyDB', () {
     test('HashRegistryValue', () {
       final re = RegistryEntry(
