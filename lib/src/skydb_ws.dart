@@ -2,8 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:http/http.dart' as http;
-
 // import 'package:web_socket_channel/status.dart' as status;
 import 'package:web_socket_channel/web_socket_channel.dart';
 
@@ -260,7 +258,7 @@ class SkyDBoverWS {
   Future<SkyFile> downloadFileFromRegistryEntry(SignedRegistryEntry sre) async {
     final skylink = utf8.decode(sre.entry.data);
 
-    final res = await http.get(Uri.https(skynetClient.portalHost, '$skylink'));
+    final res = await skynetClient.httpClient.get(Uri.https(skynetClient.portalHost, '$skylink'));
 
     // print('downloadFileFromRegistryEntry HTTP ${res.statusCode}');
 

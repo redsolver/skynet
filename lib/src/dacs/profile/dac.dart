@@ -6,7 +6,6 @@ import 'package:skynet/src/client.dart';
 import 'package:skynet/src/skystandards/profile.dart';
 import 'package:skynet/src/skystandards/types.dart';
 
-import 'package:http/http.dart' as http;
 import 'package:skynet/src/user.dart';
 
 const DAC_DOMAIN = "profile-dac.hns";
@@ -67,7 +66,7 @@ class ProfileDAC /* extends DAC */ {
 
         // download the data in that Skylink
         final res =
-            await http.get(Uri.https(skynetClient.portalHost, '$skylink'));
+            await skynetClient.httpClient.get(Uri.https(skynetClient.portalHost, '$skylink'));
 
         var data = json.decode(res.body);
         if (data is String) {

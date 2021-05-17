@@ -1,9 +1,9 @@
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
 import 'package:skynet/src/client.dart';
+import 'package:http/http.dart' as http;
 
 import 'file.dart';
 
@@ -25,7 +25,7 @@ Future<String?> uploadFile(
   );
 
   request.files.add(multipartFile);
-  var response = await request.send();
+  final response = await skynetClient.httpClient.send(request);
 
   if (response.statusCode != 200) {
     throw Exception('HTTP ${response.statusCode}');
@@ -63,7 +63,7 @@ Future<String?> uploadFileWithStream(
   );
 
   request.files.add(multipartFile);
-  var response = await request.send();
+  final response = await skynetClient.httpClient.send(request);
 
   if (response.statusCode != 200) {
     throw Exception('HTTP ${response.statusCode}');
@@ -106,7 +106,7 @@ Future<String?> uploadDirectory(
     request.files.add(multipartFile);
   }
 
-  var response = await request.send();
+  final response = await skynetClient.httpClient.send(request);
 
   if (response.statusCode != 200) {
     print(utf8.decode(await response.stream.toBytes()));

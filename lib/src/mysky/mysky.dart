@@ -11,9 +11,9 @@ class MySky {
 
   Future<void> load(
     String skappDomain, {
-    SkynetClient? skynetClient,
+    required SkynetClient skynetClient,
   }) async {
-    skynetClient ??= SkynetClient();
+    // skynetClient ??= SkynetClient();
 
     final client = JSSkynetClient(skynetClient.portalHost);
 

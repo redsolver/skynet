@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:http/http.dart';
 import 'package:skynet/src/file.dart';
 import 'package:skynet/src/registry_classes.dart';
 import 'package:skynet/src/utils/detect_portal/detect_portal.dart';
@@ -11,6 +12,10 @@ import 'upload.dart' as upload_impl;
 import 'mysky/json.dart' as file_impl;
 import 'user.dart';
 
+import 'http_client/client_stub.dart'
+    if (dart.library.html) 'http_client/browser_client.dart'
+    if (dart.library.io) 'http_client/io_client.dart';
+
 class SkynetClient {
   late final String portalHost;
 
@@ -19,8 +24,12 @@ class SkynetClient {
   late final _SkynetClientRegistry registry;
   late final _SkynetClientFile file;
 
+  late final BaseClient httpClient;
+
   SkynetClient([String? portal]) {
     portal ??= detectSkynetPortal();
+
+    httpClient = createClient();
 
     portalHost = portal;
 

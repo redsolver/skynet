@@ -3,7 +3,6 @@ import 'dart:typed_data';
 import 'package:convert/convert.dart';
 import 'package:cryptography/cryptography.dart' hide MacAlgorithm;
 
-import 'package:http/http.dart' as http;
 
 import 'registry_classes.dart';
 import 'client.dart';
@@ -32,7 +31,7 @@ Future<SignedRegistryEntry?> getEntry(
 
   try {
     final res =
-        await http.get(uri).timeout(Duration(seconds: timeoutInSeconds));
+        await skynetClient.httpClient.get(uri).timeout(Duration(seconds: timeoutInSeconds));
     if (res.statusCode == 200) {
       final data = json.decode(res.body);
 
@@ -139,7 +138,7 @@ Future<bool> setEntryRaw(
     'signature': srv.signature!.bytes,
   };
 
-  final res = await http.post(uri, body: json.encode(data));
+  final res = await skynetClient.httpClient.post(uri, body: json.encode(data));
 
   if (res.statusCode == 204) {
     return true;
