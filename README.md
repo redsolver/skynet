@@ -10,6 +10,32 @@ It also supports Dart-to-JS bindings for MySky and popular DACs (Profile DAC, Fe
 
 You now have to use the `SkynetClient()` instance for all operations. See the example below for details or contact me on Discord if you need help migrating your project.
 
+## Imports you need
+
+### `import 'package:skynet/skynet.dart';`
+
+Fully supported on **native** and **web**.
+
+- Upload files or directories to Skynet
+- Use SkyDB and the registry directly
+- Resolve portal-independent links
+- Use the `setJSON` and `getJSON` MySky methods if you have the user's seed
+- Use the experimental WebSocket endpoint
+
+### `import 'package:skynet/mysky.dart';`
+
+Only supported on **web**, requires importing `skynet-js` using a `<script>` tag.
+
+- Use all MySky methods
+
+### `import 'package:skynet/dacs.dart';`
+
+Most read-only methods supported on **native** and **web**. All methods which write data require MySky and only work on **web**.
+
+- Profile DAC
+- Feed DAC
+- Social DAC
+
 ## Install
 
 ```yaml
