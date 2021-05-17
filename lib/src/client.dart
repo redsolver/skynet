@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:skynet/src/file.dart';
 import 'package:skynet/src/registry_classes.dart';
+import 'package:skynet/src/utils/detect_portal/detect_portal.dart';
 import 'data_with_revision.dart';
 import 'resolve.dart' as resolve_impl;
 import 'skydb.dart' as skydb_impl;
@@ -18,8 +19,11 @@ class SkynetClient {
   late final _SkynetClientRegistry registry;
   late final _SkynetClientFile file;
 
-  SkynetClient([String portal = 'siasky.net']) {
-    portalHost = portal; // TODO Auto-detection and remove .hns.
+  SkynetClient([String? portal]) {
+    portal ??= detectSkynetPortal();
+
+    portalHost = portal;
+
     upload = _SkynetClientUpload(this);
     skydb = _SkynetClientSkyDB(this);
     registry = _SkynetClientRegistry(this);
