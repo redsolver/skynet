@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:convert/convert.dart';
+import 'package:skynet/src/crypto.dart';
 
 import 'data_with_revision.dart';
 import 'registry_classes.dart';
@@ -73,7 +74,7 @@ Future<DataWithRevision<SkyFile>> getFileWithRevision(
     throw Exception('not found');
   }
 
-  final skylink = String.fromCharCodes(existing.entry.data);
+  final skylink = decodeSkylinkFromRegistryEntry(existing.entry.data);
 
   // download the data in that Skylink
   final res = await skynetClient.httpClient.get(Uri.https(skynetClient.portalHost, '$skylink'));

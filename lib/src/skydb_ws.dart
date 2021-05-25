@@ -136,6 +136,7 @@ class SkyDBoverWS {
     String datakey, {
     String? path,
   }) {
+    // print('[subscribe] ${user.id}');
     final key = Uint8List.fromList([
       ...user.publicKey.bytes,
       ...(path != null ? deriveDiscoverableTweak(path) : hashDatakey(datakey))
@@ -256,9 +257,10 @@ class SkyDBoverWS {
   }
 
   Future<SkyFile> downloadFileFromRegistryEntry(SignedRegistryEntry sre) async {
-    final skylink = utf8.decode(sre.entry.data);
+    final skylink = decodeSkylinkFromRegistryEntry(sre.entry.data);
 
-    final res = await skynetClient.httpClient.get(Uri.https(skynetClient.portalHost, '$skylink'));
+    final res = await skynetClient.httpClient
+        .get(Uri.https(skynetClient.portalHost, '$skylink'));
 
     // print('downloadFileFromRegistryEntry HTTP ${res.statusCode}');
 

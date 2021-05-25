@@ -9,6 +9,13 @@ import 'package:skynet/src/blake2b/blake2b_hash.dart';
 import 'encode_endian/base.dart';
 import 'encode_endian/encode_endian.dart';
 
+String decodeSkylinkFromRegistryEntry(Uint8List data) {
+  if (data.length == 46) {
+    return utf8.decode(data);
+  }
+  return base64Url.encode(data).replaceAll('=', '');
+}
+
 String deriveChildSeed(String masterSeed, String derivationPath) {
   final list = Uint8List.fromList([
     ...withPadding(masterSeed.length),

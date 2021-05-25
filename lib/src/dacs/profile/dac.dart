@@ -8,6 +8,8 @@ import 'package:skynet/src/skystandards/types.dart';
 
 import 'package:skynet/src/user.dart';
 
+import '../../crypto.dart';
+
 const DAC_DOMAIN = "profile-dac.hns";
 const VERSION = 1;
 const PROFILE_INDEX_PATH = '$DAC_DOMAIN/profileIndex.json';
@@ -41,6 +43,19 @@ class ProfileDAC /* extends DAC */ {
 
     var lastSkapp = await skynetClient.file.getJSON(userId, PROFILE_INDEX_PATH);
 
+    if (lastSkapp != null) {
+      if (lastSkapp['profile'] != null) {
+        final profile = Profile.fromJson(lastSkapp['profile']);
+        profileCache[userId] = profile;
+        completer.complete(profile);
+        return profile;
+      }
+    }
+
+    completer.complete(null);
+    return null;
+
+    // TODO Use `profile-dac.hns/profileIndex.json` #profile directly
     if (lastSkapp != null && lastSkapp['lastUpdatedBy'] != null) {
       lastSkapp = lastSkapp['lastUpdatedBy'];
       final LATEST_PROFILE_PATH = '$DAC_DOMAIN/$lastSkapp/userprofile.json';
@@ -62,11 +77,11 @@ class ProfileDAC /* extends DAC */ {
       );
 
       if (entry != null) {
-        final skylink = String.fromCharCodes(entry.entry.data);
+        final skylink = decodeSkylinkFromRegistryEntry(entry.entry.data);
 
         // download the data in that Skylink
-        final res =
-            await skynetClient.httpClient.get(Uri.https(skynetClient.portalHost, '$skylink'));
+        final res = await skynetClient.httpClient
+            .get(Uri.https(skynetClient.portalHost, '$skylink'));
 
         var data = json.decode(res.body);
         if (data is String) {

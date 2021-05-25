@@ -15,7 +15,7 @@ class MySky {
   }) async {
     // skynetClient ??= SkynetClient();
 
-    final client = JSSkynetClient(skynetClient.portalHost);
+    final client = JSSkynetClient('https://${skynetClient.portalHost}');
 
     _jsMySky = await promiseToFuture<JSMySky>(
       client.loadMySky(
@@ -45,7 +45,7 @@ class MySky {
     return promiseToFuture<bool>(_jsMySky.requestLoginAccess());
   }
 
-  Future<dynamic> getJSON(String path) async {
+  Future<JSONResponse> getJSON(String path) async {
     final res = await promiseToFuture<JSJSONResponse>(_jsMySky.getJSON(path));
 
     return JSONResponse(res.skylink, dartify(res.data));
