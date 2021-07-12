@@ -4,6 +4,9 @@ import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
 import 'package:skynet/src/client.dart';
 import 'package:http/http.dart' as http;
+import 'package:cross_file_dart/cross_file_dart.dart' show XFileDart;
+import 'package:skynet/src/skynet_tus_client.dart';
+import 'package:tus_client/tus_client.dart';
 
 import 'file.dart';
 
@@ -14,6 +17,8 @@ Future<String?> uploadFile(
   var uri = Uri.https(skynetClient.portalHost, '/skynet/skyfile');
 
   var request = http.MultipartRequest('POST', uri);
+
+  request.headers.addAll(skynetClient.headers ?? {});
 
   final mimeType = file.type ?? lookupMimeType(file.filename ?? '');
 
@@ -52,6 +57,8 @@ Future<String?> uploadFileWithStream(
 
   var request = http.MultipartRequest("POST", uri);
 
+  request.headers.addAll(skynetClient.headers ?? {});
+
   final mimeType = lookupMimeType(file.filename ?? '');
 
   var multipartFile = http.MultipartFile(
@@ -78,6 +85,35 @@ Future<String?> uploadFileWithStream(
   return resData['skylink'];
 }
 
+/**
+  * The tus chunk size is (4MiB - encryptionOverhead) * dataPieces, set in skyd.
+ */
+const TUS_CHUNK_SIZE = (1 << 22) * 10; // ~ 41 MB
+
+Future<String?> uploadLargeFile(
+  XFileDart file, {
+  Function(double)? onProgress,
+  String? filename,
+  /* Function()? onComplete, */
+  required SkynetClient skynetClient,
+}) async {
+  final tusClient = SkynetTusClient(
+    Uri.https(skynetClient.portalHost, '/skynet/tus'),
+    file,
+    skynetClient: skynetClient,
+    store: TusMemoryStore(),
+    maxChunkSize: TUS_CHUNK_SIZE,
+    metadata: filename == null ? {} : {'filename': filename},
+    headers: skynetClient.headers,
+    // headers: skynetClient.httpClient.
+  );
+  final res = await tusClient.upload(
+    onProgress: onProgress,
+  );
+
+  return res;
+}
+
 Future<String?> uploadDirectory(
   Map<String, Stream<List<int>>> fileStreams,
   Map<String, int> lengths,
@@ -89,6 +125,8 @@ Future<String?> uploadDirectory(
   });
 
   var request = http.MultipartRequest("POST", uri);
+
+  request.headers.addAll(skynetClient.headers ?? {});
 
   for (final filename in fileStreams.keys) {
     var stream = http.ByteStream(fileStreams[filename]!);

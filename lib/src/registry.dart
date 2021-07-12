@@ -3,7 +3,6 @@ import 'dart:typed_data';
 import 'package:convert/convert.dart';
 import 'package:cryptography/cryptography.dart' hide MacAlgorithm;
 
-
 import 'registry_classes.dart';
 import 'client.dart';
 import 'crypto.dart';
@@ -17,6 +16,7 @@ Future<SignedRegistryEntry?> getEntry(
   String datakey, {
   String? hashedDatakey,
   int timeoutInSeconds = 10,
+  bool verifySignature = true,
   required SkynetClient skynetClient,
 }) async {
   final uri = Uri.https(skynetClient.portalHost, unencodedPath, {
@@ -28,10 +28,15 @@ Future<SignedRegistryEntry?> getEntry(
     ))) */
     ,
   });
+  //print(uri);
 
   try {
-    final res =
-        await skynetClient.httpClient.get(uri).timeout(Duration(seconds: timeoutInSeconds));
+    final res = await skynetClient.httpClient
+        .get(
+          uri,
+          headers: skynetClient.headers,
+        )
+        .timeout(Duration(seconds: timeoutInSeconds));
     if (res.statusCode == 200) {
       final data = json.decode(res.body);
 
@@ -39,26 +44,32 @@ Future<SignedRegistryEntry?> getEntry(
         entry: RegistryEntry(
           datakey: datakey,
           data: hex.decode(data['data']) as Uint8List,
-          revision: data['revision'],
+          revision: data['revision'] > 9007199254740991
+              ? -3 // TODO better response
+              : data['revision'],
         ),
         signature:
             Signature(hex.decode(data['signature']), publicKey: user.publicKey),
       );
 
+      // TODO Verify even with hashedDatakey
       if (hashedDatakey != null) return srv;
 
-      final verified =
-          await ed25519.verify(srv.entry.hash(), signature: srv.signature!);
+      if (verifySignature) {
+        final verified =
+            await ed25519.verify(srv.entry.hash(), signature: srv.signature!);
 
-      if (!verified) throw Exception('Invalid signature found');
+        if (!verified) throw Exception('Invalid signature found');
+      }
 
       return srv;
     } else if (res.statusCode == 404) {
       return null;
     }
     throw Exception('unexpected response status code ${res.statusCode}');
-  } catch (e) {
-    /* print(e); */
+  } catch (e, st) {
+    print(e);
+    // print(st);
     return null;
   }
 }
@@ -138,7 +149,11 @@ Future<bool> setEntryRaw(
     'signature': srv.signature!.bytes,
   };
 
-  final res = await skynetClient.httpClient.post(uri, body: json.encode(data));
+  final res = await skynetClient.httpClient.post(
+    uri,
+    body: json.encode(data),
+    headers: skynetClient.headers,
+  );
 
   if (res.statusCode == 204) {
     return true;

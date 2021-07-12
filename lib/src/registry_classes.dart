@@ -1,4 +1,3 @@
-
 import 'dart:typed_data';
 
 import 'package:convert/convert.dart';
@@ -91,4 +90,3 @@ class SignedRegistryEntry {
  */
   SignedRegistryEntry({required this.entry, this.signature});
 }
-

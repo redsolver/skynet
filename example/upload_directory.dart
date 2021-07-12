@@ -2,7 +2,7 @@ import 'package:skynet/skynet.dart';
 import 'dart:io';
 
 void main() async {
-  final skynetClient = SkynetClient('siasky.net');
+  final skynetClient = SkynetClient(portal: 'siasky.net');
 
   final fileStreams = <String, Stream<List<int>>>{};
   final lengths = <String, int>{};

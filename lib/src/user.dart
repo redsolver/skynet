@@ -8,6 +8,7 @@ import 'package:pinenacl/api.dart' as pinenacl;
 import 'package:pinenacl/ed25519.dart' as pinenacl;
 import 'package:pinenacl/src/authenticated_encryption/secret.dart' as pinenacl;
 import 'package:pinenacl/src/authenticated_encryption/public.dart' as pinenacl;
+import 'package:skynet/src/mysky_seed/derivation.dart';
 
 // User represents a user entity and can be used to sign.
 class SkynetUser {
@@ -20,7 +21,8 @@ class SkynetUser {
   late SimplePublicKey publicKey;
   Future<List<int>> get privateKeySync => keyPair.extractPrivateKeyBytes();
 
-  late List<int> seed;
+  late List<int> discoverableSeed;
+  late Uint8List rawSeed;
 
   late pinenacl.PrivateKey sk;
   pinenacl.PublicKey? pk;
@@ -39,15 +41,23 @@ class SkynetUser {
     return user;
   }
 
-  SkynetUser.fromSeedAsync(List<int> usedSeed) {
-    seed = usedSeed;
+  static Future<SkynetUser> fromMySkySeedPhrase(String seedPhrase) async {
+    final seed = validatePhrase(seedPhrase);
+    final bytes = deriveRootDiscoverableKeyFromSeed(seed);
+    final user = await SkynetUser.createFromSeedAsync(bytes);
+    user.rawSeed = seed;
+    return user;
+  }
 
-    sk = pinenacl.PrivateKey(seed);
+  SkynetUser.fromSeedAsync(List<int> usedSeed) {
+    discoverableSeed = usedSeed;
+
+    sk = pinenacl.PrivateKey(discoverableSeed);
 
     pk = sk.publicKey;
   }
   Future<void> init() async {
-    keyPair = await ed25519.newKeyPairFromSeed(seed);
+    keyPair = await ed25519.newKeyPairFromSeed(discoverableSeed);
 
     publicKey = await keyPair.extractPublicKey();
     id = hex.encode(publicKey.bytes);

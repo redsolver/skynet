@@ -1,6 +1,7 @@
 import 'package:js/js_util.dart';
 import 'package:skynet/src/client.dart';
 import 'package:skynet/src/dacs/dac.dart';
+import 'package:skynet/src/utils/js.dart';
 
 import 'js.dart';
 
@@ -53,6 +54,43 @@ class SocialDAC extends DAC {
     } else {
       throw res.error ?? 'Error: No error';
     }
+  }
+
+  Future<void> followExternal(
+    String platform,
+    String userId,
+    Map<String, dynamic> data,
+  ) async {
+    final res = await promiseToFuture<SocialDACResponse>(
+      _jsSocialDAC.followExternal(platform, userId, jsify(data)),
+    );
+    if (res.success) {
+      return;
+    } else {
+      throw res.error ?? 'Error: No error';
+    }
+  }
+
+  Future<void> unfollowExternal(
+    String platform,
+    String userId,
+  ) async {
+    final res = await promiseToFuture<SocialDACResponse>(
+      _jsSocialDAC.unfollowExternal(platform, userId),
+    );
+    if (res.success) {
+      return;
+    } else {
+      throw res.error ?? 'Error: No error';
+    }
+  }
+
+  Future<Map<String, dynamic>> getExternalFollowingForUser(
+      String userId) async {
+    final res = await promiseToFuture<dynamic>(
+      _jsSocialDAC.getExternalFollowingForUser(userId),
+    );
+    return dartify(res).cast<String, dynamic>();
   }
 
   String get dacDomain => _jsSocialDAC.dacDomain;

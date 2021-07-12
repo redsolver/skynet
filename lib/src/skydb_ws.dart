@@ -259,8 +259,10 @@ class SkyDBoverWS {
   Future<SkyFile> downloadFileFromRegistryEntry(SignedRegistryEntry sre) async {
     final skylink = decodeSkylinkFromRegistryEntry(sre.entry.data);
 
-    final res = await skynetClient.httpClient
-        .get(Uri.https(skynetClient.portalHost, '$skylink'));
+    final res = await skynetClient.httpClient.get(
+      Uri.https(skynetClient.portalHost, '$skylink'),
+      headers: skynetClient.headers,
+    );
 
     // print('downloadFileFromRegistryEntry HTTP ${res.statusCode}');
 

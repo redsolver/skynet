@@ -27,6 +27,26 @@ class SocialDAC extends DAC {
     throw 'Platform Not Supported';
   }
 
+  Future<void> followExternal(
+    String platform,
+    String userId,
+    Map<String, dynamic> data,
+  ) async {
+    throw 'Platform Not Supported';
+  }
+
+  Future<void> unfollowExternal(
+    String platform,
+    String userId,
+  ) async {
+    throw 'Platform Not Supported';
+  }
+
+  Future<Map<String, dynamic>> getExternalFollowingForUser(
+      String userId) async {
+    throw 'Platform Not Supported';
+  }
+
   String get dacDomain {
     throw 'Platform Not Supported';
   }

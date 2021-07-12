@@ -6,7 +6,7 @@ import 'package:skynet/skynet.dart';
 import 'package:convert/convert.dart';
 
 void main() async {
-  final skynetClient = SkynetClient('siasky.net');
+  final skynetClient = SkynetClient(portal:'siasky.net');
 
   final user = SkynetUser.fromSeedAsync(
     hex.decode(

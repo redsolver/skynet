@@ -77,7 +77,10 @@ Future<DataWithRevision<SkyFile>> getFileWithRevision(
   final skylink = decodeSkylinkFromRegistryEntry(existing.entry.data);
 
   // download the data in that Skylink
-  final res = await skynetClient.httpClient.get(Uri.https(skynetClient.portalHost, '$skylink'));
+  final res = await skynetClient.httpClient.get(
+    Uri.https(skynetClient.portalHost, '$skylink'),
+    headers: skynetClient.headers,
+  );
 
   // TODO Check if response is ok
 

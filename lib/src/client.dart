@@ -10,7 +10,9 @@ import 'skydb.dart' as skydb_impl;
 import 'registry.dart' as registry_impl;
 import 'upload.dart' as upload_impl;
 import 'mysky/json.dart' as file_impl;
+import 'mysky/io.dart' as mysky_io_impl;
 import 'user.dart';
+import 'package:cross_file_dart/cross_file_dart.dart' show XFileDart;
 
 import 'http_client/client_stub.dart'
     if (dart.library.html) 'http_client/browser_client.dart'
@@ -25,9 +27,16 @@ class SkynetClient {
   late final _SkynetClientFile file;
 
   late final BaseClient httpClient;
+  late final Map<String, String>? headers;
 
-  SkynetClient([String? portal]) {
+  SkynetClient({String? portal, String? cookie}) {
     portal ??= detectSkynetPortal();
+
+    if (cookie != null) {
+      headers = {'cookie': cookie};
+    } else {
+      headers = null;
+    }
 
     httpClient = createClient();
 
@@ -88,6 +97,42 @@ class _SkynetClientFile {
         skynetClient: _skynetClient,
       );
 
+  Future<bool> setEncryptedJson(
+    SkynetUser skynetUser,
+    String path,
+    dynamic data,
+    int revision,
+  ) =>
+      mysky_io_impl.setEncryptedJSON(
+        skynetUser,
+        path,
+        data,
+        revision,
+        skynetClient: _skynetClient,
+      );
+
+  Future<DataWithRevision<dynamic>> getEncryptedJSONWithRevision(
+    SkynetUser skynetUser,
+    String path,
+    // {String? pathSeed}
+  ) =>
+      mysky_io_impl.getEncryptedJSONWithRevision(
+        skynetUser,
+        path,
+        // pathSeed: pathSeed,
+        skynetClient: _skynetClient,
+      );
+
+  Future<DataWithRevision<dynamic>> getJSONEncrypted(
+    String userId,
+    String pathSeed,
+  ) =>
+      mysky_io_impl.getJSONEncrypted(
+        userId,
+        pathSeed,
+        skynetClient: _skynetClient,
+      );
+
   Future<DataWithRevision<SkyFile>> getSkyFile(
     String userId,
     String path,
@@ -109,12 +154,14 @@ class _SkynetClientRegistry {
     String datakey, {
     String? hashedDatakey,
     int timeoutInSeconds = 10,
+    bool verifySignature = true,
   }) =>
       registry_impl.getEntry(
         user,
         datakey,
         hashedDatakey: hashedDatakey,
         timeoutInSeconds: timeoutInSeconds,
+        verifySignature: verifySignature,
         skynetClient: _skynetClient,
       );
 
@@ -217,6 +264,20 @@ class _SkynetClientUpload {
         length,
         readStream,
         skynetClient: _skynetClient,
+      );
+
+  Future<String?> uploadLargeFile(
+    XFileDart file, {
+    Function(double)? onProgress,
+    String? filename,
+    /* Function()? onComplete, */
+  }) =>
+      upload_impl.uploadLargeFile(
+        file,
+        onProgress: onProgress,
+        /* onComplete: onComplete, */
+        skynetClient: _skynetClient,
+        filename: filename,
       );
 
   Future<String?> uploadDirectory(

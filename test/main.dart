@@ -9,7 +9,7 @@ import 'package:test/test.dart';
 
 void main() async {
   test('resolveSkylink', () {
-    final skynetClient = SkynetClient('siasky.net');
+    final skynetClient = SkynetClient(portal: 'siasky.net');
 
     expect(
       skynetClient.resolveSkylink(

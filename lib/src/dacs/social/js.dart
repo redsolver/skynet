@@ -17,6 +17,21 @@ class JSSocialDAC {
 
   external Future<SocialDACResponse> unfollow(String userId);
 
+  external Future<SocialDACResponse> followExternal(
+    String platform,
+    String userId,
+    dynamic data,
+  );
+
+  external Future<SocialDACResponse> unfollowExternal(
+    String platform,
+    String userId,
+  );
+
+  external Future<dynamic> getExternalFollowingForUser(
+    String userId,
+  );
+
   external String get dacDomain;
 }
 
