@@ -8,3 +8,4 @@ export 'src/data_with_revision.dart';
 
 export 'src/skydb_ws.dart';
 
+export 'package:cross_file_dart/cross_file_dart.dart' show XFileDart;
