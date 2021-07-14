@@ -1,5 +1,6 @@
 import 'package:skynet/src/client.dart';
 import 'package:skynet/src/skystandards/types.dart';
+import 'package:skynet/src/utils/prefix.dart';
 
 import 'package:tuple/tuple.dart';
 
@@ -34,9 +35,7 @@ void main() async {
     int minPageLength, Stream<Null> pageLoading) async* { */
   const minItemsPerPage = 8;
 
-  if (userId.startsWith('ed25519-')) {
-    userId = userId.substring(8);
-  }
+  userId = trimUserIdPrefix(userId);
 
   final Map skappsMap =
       await skynetClient.file.getJSON(userId, '$FEED_DAC_DOMAIN/skapps.json');
@@ -56,8 +55,8 @@ void main() async {
   final limitBeforePageEnd = <String, int>{};
 
   for (final skapp in List.from(skapps)) {
-    final index =
-        await skynetClient.file.getJSON(userId, '${FEED_DAC_DOMAIN}/${skapp}/posts/index.json');
+    final index = await skynetClient.file
+        .getJSON(userId, '${FEED_DAC_DOMAIN}/${skapp}/posts/index.json');
 
     // print('[debug] [FeedDAC] $index');
     if (index == null) {

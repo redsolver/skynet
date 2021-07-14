@@ -130,7 +130,7 @@ Future<bool> setFile(
   // build the registry value
   final rv = RegistryEntry(
     datakey: datakey,
-    data: utf8.encode(skylink) as Uint8List,
+    data: convertSkylinkToUint8List(skylink),
     revision: (existing?.entry.revision ?? 0) + 1,
   );
 

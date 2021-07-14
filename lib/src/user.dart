@@ -9,6 +9,7 @@ import 'package:pinenacl/ed25519.dart' as pinenacl;
 import 'package:pinenacl/src/authenticated_encryption/secret.dart' as pinenacl;
 import 'package:pinenacl/src/authenticated_encryption/public.dart' as pinenacl;
 import 'package:skynet/src/mysky_seed/derivation.dart';
+import 'package:skynet/src/utils/prefix.dart';
 
 // User represents a user entity and can be used to sign.
 class SkynetUser {
@@ -28,9 +29,8 @@ class SkynetUser {
   pinenacl.PublicKey? pk;
 
   SkynetUser.fromId(String userId) {
-    if (userId.startsWith('ed25519-')) {
-      userId = userId.substring(8);
-    }
+    userId = trimUserIdPrefix(userId);
+
     id = userId;
     publicKey = SimplePublicKey(hex.decode(userId), type: KeyPairType.ed25519);
   }

@@ -16,6 +16,13 @@ String decodeSkylinkFromRegistryEntry(Uint8List data) {
   return base64Url.encode(data).replaceAll('=', '');
 }
 
+Uint8List convertSkylinkToUint8List(String skylink) {
+  while (skylink.length % 4 != 0) {
+    skylink += '=';
+  }
+  return base64Url.decode(skylink);
+}
+
 String deriveChildSeed(String masterSeed, String derivationPath) {
   final list = Uint8List.fromList([
     ...withPadding(masterSeed.length),

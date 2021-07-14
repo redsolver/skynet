@@ -216,7 +216,7 @@ Future<bool> setEncryptedJSON(
   // build the registry value
   final rv = RegistryEntry(
     datakey: null,
-    data: utf8.encode(skylink) as Uint8List,
+    data: convertSkylinkToUint8List(skylink),
     revision: revision, //(existing?.entry.revision ?? 0) + 1,
   );
 

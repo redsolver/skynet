@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:convert/convert.dart';
 import 'package:pinenacl/api.dart';
 import 'package:skynet/src/client.dart';
+import 'package:skynet/src/crypto.dart';
 import 'package:skynet/src/data_with_revision.dart';
 import 'package:skynet/src/file.dart';
 import 'package:skynet/src/user.dart';
@@ -107,7 +108,7 @@ Future<bool> setJSON(
   // build the registry value
   final rv = RegistryEntry(
     datakey: null,
-    data: utf8.encode(skylink) as Uint8List,
+    data: convertSkylinkToUint8List(skylink),
     revision: revision, //(existing?.entry.revision ?? 0) + 1,
   );
 
