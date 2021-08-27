@@ -119,10 +119,23 @@ Future<String?> uploadDirectory(
   Map<String, int> lengths,
   String fname, {
   required SkynetClient skynetClient,
+  List<String>? tryFiles,
+  Map<String, String>? errorPages,
 }) async {
-  var uri = Uri.https(skynetClient.portalHost, '/skynet/skyfile', {
+  final params = {
     'filename': fname,
-  });
+  };
+
+  if (tryFiles != null) {
+    params['tryfiles'] = json.encode(tryFiles);
+  }
+  if (errorPages != null) {
+    params['errorpages'] = json.encode(errorPages);
+  }
+
+  var uri = Uri.https(skynetClient.portalHost, '/skynet/skyfile', params);
+
+  print(uri);
 
   var request = http.MultipartRequest("POST", uri);
 

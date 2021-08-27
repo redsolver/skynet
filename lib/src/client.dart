@@ -283,12 +283,16 @@ class _SkynetClientUpload {
   Future<String?> uploadDirectory(
     Map<String, Stream<List<int>>> fileStreams,
     Map<String, int> lengths,
-    String fname,
-  ) =>
+    String fname, {
+    List<String>? tryFiles,
+    Map<String, String>? errorPages,
+  }) =>
       upload_impl.uploadDirectory(
         fileStreams,
         lengths,
         fname,
         skynetClient: _skynetClient,
+        tryFiles: tryFiles,
+        errorPages: errorPages,
       );
 }
