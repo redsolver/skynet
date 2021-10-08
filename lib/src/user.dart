@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:convert/convert.dart';
-import 'package:cryptography/cryptography.dart';
+import 'package:cryptography/cryptography.dart' hide MacAlgorithm;
 import 'package:password_hash/password_hash.dart';
 
 import 'package:pinenacl/api.dart' as pinenacl;
@@ -52,7 +52,7 @@ class SkynetUser {
   SkynetUser.fromSeedAsync(List<int> usedSeed) {
     discoverableSeed = usedSeed;
 
-    sk = pinenacl.PrivateKey(discoverableSeed);
+    sk = pinenacl.PrivateKey(Uint8List.fromList(discoverableSeed));
 
     pk = sk.publicKey;
   }
@@ -91,7 +91,7 @@ class SkynetUser {
     return ed25519.sign(message, keyPair: keyPair);
   }
 
-  List<int> symEncrypt(List<int> key, List<int> message) {
+  List<int> symEncrypt(Uint8List key, Uint8List message) {
     final box = pinenacl.SecretBox(key);
 
     final encrypted = box.encrypt(message);
@@ -99,12 +99,12 @@ class SkynetUser {
     return [...encrypted.nonce, ...encrypted.cipherText];
   }
 
-  List<int> symDecrypt(List<int> key, List<int> encryptedMessage) {
+  List<int> symDecrypt(Uint8List key, Uint8List encryptedMessage) {
     final box = pinenacl.SecretBox(key);
 
     return box.decrypt(
-      encryptedMessage.sublist(24) as Uint8List,
-      nonce: encryptedMessage.sublist(0, 24) as Uint8List?,
+      pinenacl.ByteList(encryptedMessage.sublist(24)),
+      nonce: encryptedMessage.sublist(0, 24),
     );
   }
 
@@ -120,7 +120,7 @@ class SkynetUser {
     return pinenacl.PineNaClUtils.randombytes(32);
   }
 
-  List<int> encrypt(List<int> message, List<int> theirPublicKey) {
+  List<int> encrypt(Uint8List message, Uint8List theirPublicKey) {
     final box = pinenacl.Box(
       myPrivateKey: sk,
       theirPublicKey: pinenacl.PublicKey(theirPublicKey),
@@ -131,7 +131,7 @@ class SkynetUser {
     return [...encrypted.nonce, ...encrypted.cipherText];
   }
 
-  List<int> decrypt(List<int> encryptedMessage, List<int> theirPublicKey) {
+  List<int> decrypt(Uint8List encryptedMessage, Uint8List theirPublicKey) {
     final box = pinenacl.Box(
       myPrivateKey: sk,
       theirPublicKey: pinenacl.PublicKey(theirPublicKey),
