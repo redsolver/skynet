@@ -32,9 +32,14 @@ const ENCRYPTION_NONCE_LENGTH = 24;
 const ENCRYPTION_OVERHEAD_LENGTH = 16;
 
 /**
- * The length of the share-able path seed.
+ * The length of the hex-encoded share-able directory path seed.
  */
-const ENCRYPTION_PATH_SEED_LENGTH = 32;
+const ENCRYPTION_PATH_SEED_DIRECTORY_LENGTH = 128;
+
+/**
+ * The length of the hex-encoded share-able file path seed.
+ */
+const ENCRYPTION_PATH_SEED_FILE_LENGTH = 64;
 
 // Descriptive salt that should not be changed.
 const SALT_ENCRYPTED_CHILD = "encrypted filesystem child";
@@ -61,6 +66,8 @@ class DerivationPathObject {
     required this.directory,
     required this.name,
   });
+  String toString() =>
+      'DerivationPathObject{${hex.encode(pathSeed)},$directory,$name}';
 }
 
 class EncryptedFileMetadata {
@@ -79,6 +86,7 @@ class EncryptedFileMetadata {
  * @throws - Will throw if the bytes could not be decrypted.
  */
 dynamic decryptJSONFile(Uint8List data, Uint8List key) {
+  // print(data.toString().replaceAll(' ', ''));
   if (key.length != ENCRYPTION_KEY_LENGTH) {
     throw 'wrong ENCRYPTION_KEY_LENGTH';
   }
@@ -96,6 +104,7 @@ dynamic decryptJSONFile(Uint8List data, Uint8List key) {
     ENCRYPTION_NONCE_LENGTH,
     ENCRYPTION_NONCE_LENGTH + ENCRYPTION_HIDDEN_FIELD_METADATA_LENGTH,
   );
+
   final metadata = decodeEncryptedFileMetadata(metadataBytes);
   if (metadata.version != ENCRYPTED_JSON_RESPONSE_VERSION) {
     throw "Received unrecognized JSON response version '${metadata.version}' in metadata, expected '${ENCRYPTED_JSON_RESPONSE_VERSION}'";
@@ -106,8 +115,11 @@ dynamic decryptJSONFile(Uint8List data, Uint8List key) {
   final box = pinenacl.SecretBox(key);
 
   var decryptedBytes = box.decrypt(
-      data.sublist(
-          ENCRYPTION_NONCE_LENGTH + ENCRYPTION_HIDDEN_FIELD_METADATA_LENGTH),
+      pinenacl.ByteList(
+        data.sublist(
+          ENCRYPTION_NONCE_LENGTH + ENCRYPTION_HIDDEN_FIELD_METADATA_LENGTH,
+        ),
+      ),
       nonce: nonce);
 
   if (decryptedBytes == null) {
@@ -126,6 +138,7 @@ dynamic decryptJSONFile(Uint8List data, Uint8List key) {
   // Extract the metadata.
 
   // Parse the final decrypted message as json.
+  // print(decryptedBytes.toString().replaceAll(' ', ''));
   final jsonData = json.decode(utf8.decode(decryptedBytes));
   return {'_data': jsonData, '_v': metadata.version};
 }
@@ -169,7 +182,7 @@ Uint8List encryptJSONFile(Map fullData, Uint8List key) {
   final box = pinenacl.SecretBox(key);
 
   // Encrypt the data.
-  final encryptedBytes = box.encrypt(data, nonce: nonce);
+  final encryptedBytes = box.encrypt(Uint8List.fromList(data), nonce: nonce);
 
   // Prepend the metadata.
   final metadata = EncryptedFileMetadata(version: _v);
@@ -222,7 +235,7 @@ String deriveEncryptedFileTweak(String pathSeed) {
  * @param isDirectory - Whether the path is a directory.
  * @returns - The path seed for the given path.
  */
-String deriveEncryptedFileSeed(
+String deriveEncryptedPathSeed(
     String pathSeed, String subPath, bool isDirectory) {
   // TODO pathSeed must be a hex string
   /* validateHexString("pathSeed", pathSeed, "parameter");
@@ -230,27 +243,54 @@ String deriveEncryptedFileSeed(
   validateBoolean("isDirectory", isDirectory, "parameter"); */
 
   var pathSeedBytes = hex.decode(pathSeed);
-  subPath = sanitizePath(subPath);
-  final names = subPath.split("/");
+
+  // print('deriveEncryptedFileSeed > $pathSeed');
+
+  final sanitizedPath = sanitizePath(subPath);
+  if (sanitizedPath == null) {
+    throw 'Input subPath ${subPath} not a valid path';
+  }
+  final names = sanitizedPath.split('/');
 
   for (var index = 0; index < names.length; index++) {
     final name = names[index];
     final directory = index == names.length - 1 ? isDirectory : true;
+    // print('deriveEncryptedFileSeed $name $directory');
     final derivationPathObj = DerivationPathObject(
       pathSeed: Uint8List.fromList(pathSeedBytes),
       directory: directory,
       name: name,
     );
+    // print(derivationPathObj);
     final derivationPath = hashDerivationPathObject(derivationPathObj);
+    // print('derivationPath ${hex.encode(derivationPath)}}');
     final bytes = Uint8List.fromList([
       ...sha512.convert(utf8.encode(SALT_ENCRYPTED_CHILD)).bytes,
       ...derivationPath
     ]);
     pathSeedBytes = sha512.convert(bytes).bytes;
+
+    /*    print(
+      'deriveEncryptedFileSeed > ' +
+          hex.encode(
+            pathSeedBytes.sublist(
+              0,
+              ENCRYPTION_PATH_SEED_LENGTH,
+            ),
+          ),
+    ); */
   }
+  // Truncate the path seed bytes for files only.
+  if (!isDirectory) {
+    // Divide `ENCRYPTION_PATH_SEED_FILE_LENGTH` by 2 since that is the final hex-encoded length.
+    pathSeedBytes = pathSeedBytes.sublist(
+        0, (ENCRYPTION_PATH_SEED_FILE_LENGTH / 2).round());
+  }
+  // Hex-encode the final output.
+  return hex.encode(pathSeedBytes);
 
   // Truncate and hex-encode the final output.
-  return hex.encode(pathSeedBytes.sublist(0, ENCRYPTION_PATH_SEED_LENGTH));
+  // return hex.encode(pathSeedBytes.sublist(0, ENCRYPTION_PATH_SEED_LENGTH));
 }
 
 /**
