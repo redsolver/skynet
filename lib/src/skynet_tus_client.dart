@@ -23,7 +23,7 @@
 /// Modified by redsolver, 2021
 
 import 'dart:convert' show base64, utf8;
-import 'dart:math' show min;
+import 'dart:math' show max, min;
 import 'dart:typed_data' show BytesBuilder, Uint8List;
 import 'package:skynet/src/client.dart';
 import 'package:tus_client/src/exceptions.dart';
@@ -71,12 +71,19 @@ class SkynetTusClient {
 
   Future? _chunkPatchFuture;
 
+  Stream<Uint8List>? streamFileData;
+  int? streamFileLength;
+  String? streamFileName;
+
   SkynetTusClient(
     this.url,
     this.file, {
     required this.skynetClient,
     this.store,
     this.headers,
+    this.streamFileData,
+    this.streamFileLength,
+    this.streamFileName,
     this.metadata = const {},
     this.maxChunkSize = 512 * 1024,
   }) {
@@ -100,7 +107,7 @@ class SkynetTusClient {
 
   /// Create a new [upload] throwing [ProtocolException] on server error
   create() async {
-    _fileSize = await file.length();
+    _fileSize = streamFileLength ?? (await file.length());
 
     final client = getHttpClient();
     final createHeaders = Map<String, String>.from(headers ?? {})
@@ -135,7 +142,7 @@ class SkynetTusClient {
 
   /// Check if possible to resume an already started upload
   Future<bool> resume() async {
-    _fileSize = await file.length();
+    _fileSize = streamFileLength ?? (await file.length());
     _pauseUpload = false;
 
     if (!resumingEnabled) {
@@ -160,6 +167,22 @@ class SkynetTusClient {
       await create();
     }
 
+    final list = <int>[];
+
+    bool streamClosed = false;
+
+    if (streamFileData != null) {
+      streamFileData!.listen((event) {
+        list.addAll(event);
+      })
+        ..onDone(() {
+          streamClosed = true;
+        })
+        ..onError((e) {
+          throw 'Upload stream error $e';
+        });
+    }
+
     // get offset from server
     _offset = await _getOffset();
 
@@ -179,11 +202,41 @@ class SkynetTusClient {
 
       // print('uploadHeaders $uploadHeaders');
 
-      _chunkPatchFuture = client.patch(
-        _uploadUrl as Uri,
-        headers: uploadHeaders,
-        body: await _getData(),
-      );
+      /*     int start = _offset ?? 0;
+    int end = (_offset ?? 0) + maxChunkSize;
+    end = end > (_fileSize ?? 0) ? _fileSize ?? 0 : end;
+    // final fileChunk = await file.openRead(start, end).first;
+    var b = BytesBuilder();
+
+    /* final fileChunk = */
+    await for (final chunk in file.openRead(start, end)) {
+      b.add(chunk);
+    }
+
+    final bytesRead = min(maxChunkSize, b.length);
+    _offset = (_offset ?? 0) + bytesRead;
+    return b.toBytes(); */
+
+      if (streamFileData != null) {
+        while (list.length < maxChunkSize && !streamClosed) {
+          await Future.delayed(Duration(milliseconds: 10));
+        }
+        final start = 0;
+        final end = min(maxChunkSize, list.length);
+
+        _chunkPatchFuture = client.patch(
+          _uploadUrl as Uri,
+          headers: uploadHeaders,
+          body: Uint8List.fromList(list.sublist(start, end)),
+        );
+        list.removeRange(start, end);
+      } else {
+        _chunkPatchFuture = client.patch(
+          _uploadUrl as Uri,
+          headers: uploadHeaders,
+          body: await _getData(),
+        );
+      }
       final response = await _chunkPatchFuture;
       _chunkPatchFuture = null;
 
@@ -265,7 +318,7 @@ class SkynetTusClient {
 
   /// Override this method to customize creating file fingerprint
   String? generateFingerprint() {
-    return file.path.replaceAll(RegExp(r"\W+"), '.');
+    return (streamFileName ?? file.path).replaceAll(RegExp(r"\W+"), '.');
   }
 
   /// Override this to customize creating 'Upload-Metadata'
@@ -273,7 +326,7 @@ class SkynetTusClient {
     final meta = Map<String, String>.from(metadata ?? {});
 
     if (!meta.containsKey("filename")) {
-      meta["filename"] = p.basename(file.path);
+      meta["filename"] = p.basename(streamFileName ?? file.path);
     }
 
     return meta.entries

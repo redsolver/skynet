@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
@@ -48,7 +49,7 @@ Future<String?> uploadFile(
 Future<String?> uploadFileWithStream(
   SkyFile file,
   int length,
-  Stream<List<int>> readStream, {
+  Stream<Uint8List> readStream, {
   required SkynetClient skynetClient,
 }) async {
   var uri = Uri.https(skynetClient.portalHost, '/skynet/skyfile');
@@ -94,6 +95,9 @@ Future<String?> uploadLargeFile(
   XFileDart file, {
   Function(double)? onProgress,
   String? filename,
+  Stream<Uint8List>? streamFileData,
+  String? streamFileName,
+  int? streamFileLength,
   /* Function()? onComplete, */
   required SkynetClient skynetClient,
 }) async {
@@ -105,6 +109,9 @@ Future<String?> uploadLargeFile(
     maxChunkSize: TUS_CHUNK_SIZE,
     metadata: filename == null ? {} : {'filename': filename},
     headers: skynetClient.headers,
+    streamFileName: streamFileName,
+    streamFileData: streamFileData,
+    streamFileLength: streamFileLength,
     // headers: skynetClient.httpClient.
   );
   final res = await tusClient.upload(
