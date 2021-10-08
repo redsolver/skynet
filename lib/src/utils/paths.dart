@@ -7,6 +7,26 @@ String sanitizePath(String path) {
 
   return path;
 }
+/* /**
+ * Removes a prefix from the beginning of the string.
+ *
+ * @param str - The string to process.
+ * @param prefix - The prefix to remove.
+ * @param [limit] - Maximum amount of times to trim. No limit by default.
+ * @returns - The processed string.
+ */
+String trimPrefix(str: string, prefix: string, limit?: number): string {
+  while (str.startsWith(prefix)) {
+    if (limit !== undefined && limit <= 0) {
+      break;
+    }
+    str = str.slice(prefix.length);
+    if (limit) {
+      limit -= 1;
+    }
+  }
+  return str;
+} */
 
 String trimSuffix(String str, String suffix, {int? limit}) {
   while (str.endsWith(suffix)) {

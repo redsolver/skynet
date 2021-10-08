@@ -4,8 +4,10 @@ import 'package:http/http.dart';
 import 'package:skynet/src/file.dart';
 import 'package:skynet/src/registry_classes.dart';
 import 'package:skynet/src/utils/detect_portal/detect_portal.dart';
+import 'package:skynet/src/utils/url.dart';
 import 'data_with_revision.dart';
 import 'resolve.dart' as resolve_impl;
+import 'pin.dart' as pin_impl;
 import 'skydb.dart' as skydb_impl;
 import 'registry.dart' as registry_impl;
 import 'upload.dart' as upload_impl;
@@ -48,12 +50,24 @@ class SkynetClient {
     file = _SkynetClientFile(this);
   }
 
-  String? resolveSkylink(String? link, {bool trusted = false}) =>
+  String? resolveSkylink(String? link,
+          {bool trusted = false, bool isolated = false}) =>
       resolve_impl.resolveSkylink(
         link,
         trusted: trusted,
+        isolated: isolated,
         skynetClient: this,
       );
+
+  Future<pin_impl.PinResponse> pinSkylink(String skylink) =>
+      pin_impl.pinSkylink(
+        skylink,
+        skynetClient: this,
+      );
+
+  String extractDomain(String fullDomain) {
+    return extractDomainForPortal(portalHost, fullDomain);
+  }
 }
 
 class _SkynetClientFile {
@@ -181,7 +195,7 @@ class _SkynetClientRegistry {
 
   Future<bool> setEntry(
     SkynetUser user,
-    String datakey,
+    String? datakey,
     Uint8List value, {
     String? hashedDatakey,
     int? revision,
@@ -192,6 +206,18 @@ class _SkynetClientRegistry {
         value,
         hashedDatakey: hashedDatakey,
         revision: revision,
+        skynetClient: _skynetClient,
+      );
+
+  String getEntryLink(
+    String userId,
+    String datakey, {
+    String? hashedDatakey,
+  }) =>
+      registry_impl.getEntryLink(
+        userId,
+        datakey,
+        hashedDatakey: hashedDatakey,
         skynetClient: _skynetClient,
       );
 }
@@ -257,7 +283,7 @@ class _SkynetClientUpload {
   Future<String?> uploadFileWithStream(
     SkyFile file,
     int length,
-    Stream<List<int>> readStream,
+    Stream<Uint8List> readStream,
   ) =>
       upload_impl.uploadFileWithStream(
         file,
@@ -270,6 +296,9 @@ class _SkynetClientUpload {
     XFileDart file, {
     Function(double)? onProgress,
     String? filename,
+    Stream<Uint8List>? streamFileData,
+    String? streamFileName,
+    int? streamFileLength,
     /* Function()? onComplete, */
   }) =>
       upload_impl.uploadLargeFile(
@@ -278,6 +307,9 @@ class _SkynetClientUpload {
         /* onComplete: onComplete, */
         skynetClient: _skynetClient,
         filename: filename,
+        streamFileName: streamFileName,
+        streamFileData: streamFileData,
+        streamFileLength: streamFileLength,
       );
 
   Future<String?> uploadDirectory(

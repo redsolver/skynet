@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:convert/convert.dart';
 import 'package:cryptography/cryptography.dart' hide MacAlgorithm;
+import 'package:skynet/src/sia.dart';
+import 'package:skynet/src/utils/prefix.dart';
 
 import 'registry_classes.dart';
 import 'client.dart';
@@ -13,7 +15,7 @@ final ed25519 = Ed25519();
 
 Future<SignedRegistryEntry?> getEntry(
   SkynetUser user,
-  String datakey, {
+  String? datakey, {
   String? hashedDatakey,
   int timeoutInSeconds = 10,
   bool verifySignature = true,
@@ -23,7 +25,7 @@ Future<SignedRegistryEntry?> getEntry(
     'publickey': 'ed25519:${user.id}',
     'datakey': hashedDatakey ??
         hex.encode(hashDatakey(
-            datakey)) /* hex.encode(utf8.encode(json.encode(
+            datakey!)) /* hex.encode(utf8.encode(json.encode(
       fileID.toJson(),
     ))) */
     ,
@@ -76,7 +78,7 @@ Future<SignedRegistryEntry?> getEntry(
 
 Future<bool> setEntryHelper(
   SkynetUser user,
-  String datakey,
+  String? datakey,
   Uint8List value, {
   String? hashedDatakey,
   int? revision,
@@ -131,7 +133,7 @@ Future<bool> setEntryHelper(
 
 Future<bool> setEntryRaw(
   SkynetUser user,
-  String datakey,
+  String? datakey,
   SignedRegistryEntry srv, {
   String? hashedDatakey,
   required SkynetClient skynetClient,
@@ -143,7 +145,7 @@ Future<bool> setEntryRaw(
       'algorithm': 'ed25519',
       'key': user.publicKey.bytes,
     },
-    'datakey': hashedDatakey ?? hex.encode(hashDatakey(datakey)),
+    'datakey': hashedDatakey ?? hex.encode(hashDatakey(datakey!)),
     'revision': srv.entry.revision,
     'data': srv.entry.data,
     'signature': srv.signature!.bytes,
@@ -159,4 +161,23 @@ Future<bool> setEntryRaw(
     return true;
   }
   throw Exception('unexpected response status code ${res.statusCode}');
+}
+
+String getEntryLink(
+  String userId,
+  String datakey, {
+  String? hashedDatakey,
+  required SkynetClient skynetClient,
+}) {
+  userId = trimUserIdPrefix(userId);
+  Uint8List tweak;
+  if (hashedDatakey != null) {
+    tweak = Uint8List.fromList(hex.decode(hashedDatakey));
+  } else {
+    tweak = hashDatakey(datakey);
+  }
+  final siaPublicKey = newEd25519PublicKey(userId);
+
+  final skylink = newSkylinkV2(siaPublicKey, tweak).toString();
+  return skylink;
 }
