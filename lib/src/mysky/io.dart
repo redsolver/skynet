@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:convert/convert.dart';
 import 'package:crypto/crypto.dart';
+import 'package:cryptography/cryptography.dart';
 import 'package:pinenacl/api.dart';
 import 'package:skynet/src/client.dart';
 import 'package:skynet/src/crypto.dart';
@@ -50,7 +51,7 @@ Future<DataWithRevision<dynamic>> getEncryptedJSONWithRevision(
 }) async {
   try {
     final pathSeed =
-        await getEncryptedFileSeed(path, false, skynetUser.rawSeed);
+        await getEncryptedPathSeed(path, false, skynetUser.rawSeed);
 
     final dataKey = deriveEncryptedFileTweak(pathSeed);
     final encryptionKey = deriveEncryptedFileKeyEntropy(pathSeed);
@@ -62,6 +63,7 @@ Future<DataWithRevision<dynamic>> getEncryptedJSONWithRevision(
       timeoutInSeconds: 10,
       hashedDatakey: dataKey,
     );
+
     if (existing == null) {
       throw Exception('not found');
     }
@@ -169,6 +171,8 @@ Future<bool> setEncryptedJSON(
   dynamic jsonData,
   int revision, {
   required SkynetClient skynetClient,
+  Function? signEncryptedRegistryEntry,
+  String? customPathSeed,
 }
     // int revision,
     ) async {
@@ -186,7 +190,13 @@ Future<bool> setEncryptedJSON(
   /* final publicKey = skynetUser
       .id; */
 
-  final pathSeed = await getEncryptedFileSeed(path, false, skynetUser.rawSeed);
+  final pathSeed = customPathSeed ??
+      (await getEncryptedPathSeed(
+        path,
+        false,
+        skynetUser.rawSeed,
+      ));
+
   final dataKey = deriveEncryptedFileTweak(pathSeed);
   final encryptionKey = deriveEncryptedFileKeyEntropy(pathSeed);
 
@@ -222,8 +232,20 @@ Future<bool> setEncryptedJSON(
 
   rv.hashedDatakey = Uint8List.fromList(hex.decode(dataKey));
 
-  // sign it
-  final sig = await skynetUser.sign(rv.hash());
+  Signature sig;
+
+  if (signEncryptedRegistryEntry != null) {
+    sig = Signature(
+      await signEncryptedRegistryEntry(rv),
+      publicKey: skynetUser.publicKey,
+    );
+  } else {
+    // sign it
+    sig = await skynetUser.sign(rv.hash());
+  }
+
+/*   // sign it
+  final sig = await skynetUser.sign(rv.hash()); */
 
   final srv = SignedRegistryEntry(signature: sig, entry: rv);
 
@@ -240,7 +262,9 @@ Future<bool> setEncryptedJSON(
 
 // ! MySky stuff
 
-Future<String> getEncryptedFileSeed(
+// typedef getEncryptedPathSeed = getEncryptedFileSeed;
+
+Future<String> getEncryptedPathSeed(
     String path, bool isDirectory, Uint8List seed) async {
   // log("Entered getEncryptedFileSeed");
 
@@ -272,12 +296,17 @@ Future<String> getEncryptedFileSeed(
   ]);
 
   final rootPathSeed = hex.encode(
-      sha512.convert(bytes).bytes.sublist(0, ENCRYPTION_PATH_SEED_LENGTH));
+    sha512.convert(bytes).bytes.sublist(
+          0,
+          32,
+          // ENCRYPTION_PATH_SEED_DIRECTORY_LENGTH, // TODO Check if this is valid (likely not, use 32 instead)
+        ),
+  );
 
   // Compute the child path seed.
 
   final childPathSeed =
-      deriveEncryptedFileSeed(rootPathSeed, path, isDirectory);
+      deriveEncryptedPathSeed(rootPathSeed, path, isDirectory);
 
   return childPathSeed;
 }
