@@ -185,7 +185,7 @@ class base32 {
     return true;
   }
 
-  static final _base32Regex = RegExp(r'^[A-V0-0=]+$');
+  static final _base32Regex = RegExp(r'^[A-V0-9=]+$');
   static const _base32Chars = '0123456789abcdefghijklmnopqrstuv';
   static const _base32Decode = {
     '0': 0,

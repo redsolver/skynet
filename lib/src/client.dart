@@ -29,7 +29,7 @@ class SkynetClient {
   late final _SkynetClientFile file;
 
   late final BaseClient httpClient;
-  late final Map<String, String>? headers;
+  late Map<String, String>? headers;
 
   SkynetClient({String? portal, String? cookie}) {
     portal ??= detectSkynetPortal();
@@ -295,9 +295,9 @@ class _SkynetClientUpload {
   Future<String?> uploadLargeFile(
     XFileDart file, {
     Function(double)? onProgress,
-    String? filename,
+    required String filename,
+    required String fingerprint,
     Stream<Uint8List>? streamFileData,
-    String? streamFileName,
     int? streamFileLength,
     /* Function()? onComplete, */
   }) =>
@@ -307,7 +307,8 @@ class _SkynetClientUpload {
         /* onComplete: onComplete, */
         skynetClient: _skynetClient,
         filename: filename,
-        streamFileName: streamFileName,
+        fingerprint: fingerprint,
+        // streamFileName: streamFileName,
         streamFileData: streamFileData,
         streamFileLength: streamFileLength,
       );

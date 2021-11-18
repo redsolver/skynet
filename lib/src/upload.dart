@@ -94,24 +94,28 @@ const TUS_CHUNK_SIZE = (1 << 22) * 10; // ~ 41 MB
 Future<String?> uploadLargeFile(
   XFileDart file, {
   Function(double)? onProgress,
-  String? filename,
+  required String filename,
+  required String fingerprint,
   Stream<Uint8List>? streamFileData,
   String? streamFileName,
   int? streamFileLength,
   /* Function()? onComplete, */
   required SkynetClient skynetClient,
 }) async {
+  // print('uploadLargeFile ${skynetClient.portalHost} ${skynetClient.headers}');
   final tusClient = SkynetTusClient(
     Uri.https(skynetClient.portalHost, '/skynet/tus'),
     file,
     skynetClient: skynetClient,
     store: TusMemoryStore(),
     maxChunkSize: TUS_CHUNK_SIZE,
+    streamFileName: filename,
     metadata: filename == null ? {} : {'filename': filename},
     headers: skynetClient.headers,
-    streamFileName: streamFileName,
+    fingerprint: fingerprint,
+/*     streamFileName: streamFileName,
     streamFileData: streamFileData,
-    streamFileLength: streamFileLength,
+    streamFileLength: streamFileLength, */
     // headers: skynetClient.httpClient.
   );
   final res = await tusClient.upload(
@@ -142,7 +146,7 @@ Future<String?> uploadDirectory(
 
   var uri = Uri.https(skynetClient.portalHost, '/skynet/skyfile', params);
 
-  print(uri);
+  // print(uri);
 
   var request = http.MultipartRequest("POST", uri);
 

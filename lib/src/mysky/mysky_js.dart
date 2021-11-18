@@ -7,8 +7,7 @@ import 'package:js/js.dart';
 class JSSkynetClient {
   external JSSkynetClient(String portal);
   external File get file;
-  external Future<JSMySky> loadMySky(String dataDomain,
-      [CustomConnectorOptions options]);
+  external Future<JSMySky> loadMySky(String dataDomain, [dynamic options]);
 }
 
 @JS()

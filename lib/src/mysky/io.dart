@@ -260,6 +260,120 @@ Future<bool> setEncryptedJSON(
   return updated;
 }
 
+Future<DataWithRevision<Uint8List?>> getEncryptedRawData(
+  String userId,
+  String pathSeed, {
+  required SkynetClient skynetClient,
+}) async {
+  try {
+    final dataKey = deriveEncryptedFileTweak(pathSeed);
+    final encryptionKey = deriveEncryptedFileKeyEntropy(pathSeed);
+
+    // lookup the registry entry
+    final existing = await skynetClient.registry.getEntry(
+      SkynetUser.fromId(userId),
+      '',
+      timeoutInSeconds: 10,
+      hashedDatakey: dataKey,
+    );
+    if (existing == null) {
+      throw Exception('not found');
+    }
+
+    final skylink = decodeSkylinkFromRegistryEntry(existing.entry.data);
+
+    // download the data in that Skylink
+    final res = await skynetClient.httpClient.get(
+      Uri.https(skynetClient.portalHost, '$skylink'),
+      headers: skynetClient.headers,
+    );
+
+    final data = decryptRawData(res.bodyBytes, encryptionKey);
+    // print(json.encode(data));
+
+    return DataWithRevision(data.item1, existing.entry.revision);
+  } catch (e) {
+    print(e);
+    return DataWithRevision(null, -1);
+  }
+}
+
+/**
+   * Sets Encrypted JSON at the given path through MySky, if the user has given Write permissions to do so.
+   *
+   * @param path - The data path.
+   * @param json - The json to encrypt and set.
+   * @param [customOptions] - Additional settings that can optionally be set.
+   * @returns - An object containing the original json data.
+   */
+Future<bool> setEncryptedRawData(
+  SkynetUser skynetUser, // Derived from discoverable seed
+  String path,
+  Uint8List bytes,
+  int revision, {
+  required SkynetClient skynetClient,
+  Function? signEncryptedRegistryEntry,
+  String? customPathSeed,
+}
+    // int revision,
+    ) async {
+  final pathSeed = customPathSeed ??
+      (await getEncryptedPathSeed(
+        path,
+        false,
+        skynetUser.rawSeed,
+      ));
+
+  final dataKey = deriveEncryptedFileTweak(pathSeed);
+  final encryptionKey = deriveEncryptedFileKeyEntropy(pathSeed);
+
+  final data = encryptRawData(bytes, encryptionKey);
+
+  final skylink = await (skynetClient.upload.uploadFile(
+    SkyFile(
+      content: data,
+      filename: 'dk:${dataKey}', // TODO Check if this is secure
+      type: 'application/octet-stream',
+    ),
+  ));
+
+  if (skylink == null) {
+    throw 'Upload failed';
+  }
+
+  final rv = RegistryEntry(
+    datakey: null,
+    data: convertSkylinkToUint8List(skylink),
+    revision: revision, //(existing?.entry.revision ?? 0) + 1,
+  );
+
+  rv.hashedDatakey = Uint8List.fromList(hex.decode(dataKey));
+
+  Signature sig;
+
+  if (signEncryptedRegistryEntry != null) {
+    sig = Signature(
+      await signEncryptedRegistryEntry(rv),
+      publicKey: skynetUser.publicKey,
+    );
+  } else {
+    // sign it
+    sig = await skynetUser.sign(rv.hash());
+  }
+
+  final srv = SignedRegistryEntry(signature: sig, entry: rv);
+
+  // update the registry
+  final updated = await skynetClient.registry.setEntryRaw(
+    skynetUser,
+    '',
+    srv,
+    hashedDatakey: dataKey,
+  );
+
+  return updated;
+}
+
 // ! MySky stuff
 
 // typedef getEncryptedPathSeed = getEncryptedFileSeed;
@@ -304,6 +418,8 @@ Future<String> getEncryptedPathSeed(
   );
 
   // Compute the child path seed.
+
+  if (path.isEmpty) return rootPathSeed;
 
   final childPathSeed =
       deriveEncryptedPathSeed(rootPathSeed, path, isDirectory);

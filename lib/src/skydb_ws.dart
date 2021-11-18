@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 // import 'package:web_socket_channel/status.dart' as status;
 import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:http/http.dart' as http;
 
 import 'crypto.dart';
 import 'file.dart';
@@ -259,10 +260,26 @@ class SkyDBoverWS {
   Future<SkyFile> downloadFileFromRegistryEntry(SignedRegistryEntry sre) async {
     final skylink = decodeSkylinkFromRegistryEntry(sre.entry.data);
 
-    final res = await skynetClient.httpClient.get(
-      Uri.https(skynetClient.portalHost, '$skylink'),
-      headers: skynetClient.headers,
-    );
+    http.Response? res;
+    int retryCount = 0;
+
+    while (res == null && retryCount < 7) {
+      retryCount++;
+      try {
+        res = await skynetClient.httpClient
+            .get(
+              Uri.https(skynetClient.portalHost, '$skylink'),
+              headers: skynetClient.headers,
+            )
+            .timeout(
+              Duration(
+                seconds: 30,
+              ),
+            );
+      } catch (e) {
+        await Future.delayed(Duration(seconds: 1));
+      }
+    }
 
     // print('downloadFileFromRegistryEntry HTTP ${res.statusCode}');
 
@@ -271,7 +288,7 @@ class SkyDBoverWS {
     // print('downloadFileFromRegistryEntry metadata ${metadata}');
 
     final file = SkyFile(
-        content: res.bodyBytes,
+        content: res!.bodyBytes,
         filename: null, //metadata['filename'],
         type: res.headers['content-type']);
 

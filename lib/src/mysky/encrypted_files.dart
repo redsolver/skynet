@@ -8,6 +8,7 @@ import 'package:pinenacl/api.dart' as pinenacl;
 import 'package:pinenacl/ed25519.dart' as pinenacl;
 import 'package:pinenacl/src/authenticated_encryption/secret.dart' as pinenacl;
 import 'package:skynet/src/utils/paths.dart';
+import 'package:tuple/tuple.dart';
 
 const ENCRYPTED_JSON_RESPONSE_VERSION = 1;
 
@@ -86,7 +87,119 @@ class EncryptedFileMetadata {
  * @throws - Will throw if the bytes could not be decrypted.
  */
 dynamic decryptJSONFile(Uint8List data, Uint8List key) {
-  // print(data.toString().replaceAll(' ', ''));
+  /* // print(data.toString().replaceAll(' ', ''));
+  if (key.length != ENCRYPTION_KEY_LENGTH) {
+    throw 'wrong ENCRYPTION_KEY_LENGTH';
+  }
+
+  // Validate that the size of the data corresponds to a padded block.
+  if (!checkPaddedBlock(data.length)) {
+    throw "Expected parameter 'data' to be padded encrypted data, length was '${data.length}', nearest padded block is '${padFileSize(data.length)}'";
+  }
+
+  // Extract the nonce.
+  final nonce = data.sublist(0, ENCRYPTION_NONCE_LENGTH);
+
+  // Extract the unencrypted hidden field metadata.
+  final metadataBytes = data.sublist(
+    ENCRYPTION_NONCE_LENGTH,
+    ENCRYPTION_NONCE_LENGTH + ENCRYPTION_HIDDEN_FIELD_METADATA_LENGTH,
+  );
+
+  final metadata = decodeEncryptedFileMetadata(metadataBytes);
+  if (metadata.version != ENCRYPTED_JSON_RESPONSE_VERSION) {
+    throw "Received unrecognized JSON response version '${metadata.version}' in metadata, expected '${ENCRYPTED_JSON_RESPONSE_VERSION}'";
+  }
+
+  // Decrypt the non-nonce part of the data.
+
+  final box = pinenacl.SecretBox(key);
+
+  var decryptedBytes = box.decrypt(
+      pinenacl.ByteList(
+        data.sublist(
+          ENCRYPTION_NONCE_LENGTH + ENCRYPTION_HIDDEN_FIELD_METADATA_LENGTH,
+        ),
+      ),
+      nonce: nonce);
+
+  if (decryptedBytes == null) {
+    throw "Could not decrypt given encrypted JSON file";
+  }
+
+  // Trim the 0-byte padding off the end.
+  var paddingIndex = decryptedBytes.length;
+  while (paddingIndex > 0 && decryptedBytes[paddingIndex - 1] == 0) {
+    paddingIndex--;
+  }
+  decryptedBytes = decryptedBytes.sublist(0, paddingIndex); */
+
+  //decryptedBytes =
+  //     decryptedBytes.sublist(ENCRYPTION_HIDDEN_FIELD_METADATA_LENGTH);
+  // Extract the metadata.
+  final decryptRes = decryptRawData(data, key);
+
+  // Parse the final decrypted message as json.
+  // print(decryptedBytes.toString().replaceAll(' ', ''));
+  final jsonData = json.decode(utf8.decode(decryptRes.item1));
+  return {'_data': jsonData, '_v': decryptRes.item2.version};
+}
+
+/**
+ * Encrypts the given JSON data and metadata.
+ *
+ * @param fullData - The given JSON data and metadata.
+ * @param key - The encryption key.
+ * @returns - The encrypted data.
+ */
+Uint8List encryptJSONFile(Map fullData, Uint8List key) {
+  final dynamic _data = fullData['_data'];
+  final int _v = fullData['_v'];
+
+  /* validateObject("fullData._data", _data, "parameter");
+  validateNumber("fullData._v", _v, "parameter"); */
+
+  if (key.length != ENCRYPTION_KEY_LENGTH) {
+    throw 'wrong ENCRYPTION_KEY_LENGTH';
+  }
+
+  // Stringify the json and convert to bytes.
+  var data = utf8.encode(json.encode(_data));
+
+  final res = encryptRawData(Uint8List.fromList(data), key);
+  return res;
+
+  // Add padding so that the final size will be a padded block. The overhead will be added by encryption and we add the nonce at the end.
+  /* final finalSize = padFileSize(data.length) -
+      ENCRYPTION_OVERHEAD_LENGTH -
+      ENCRYPTION_NONCE_LENGTH; */
+/*   final totalOverhead = ENCRYPTION_OVERHEAD_LENGTH +
+      ENCRYPTION_NONCE_LENGTH +
+      ENCRYPTION_HIDDEN_FIELD_METADATA_LENGTH;
+  final finalSize = padFileSize(data.length + totalOverhead) - totalOverhead;
+
+  data = Uint8List.fromList([...data, ...Uint8List(finalSize - data.length)]);
+
+  // Generate a random nonce.
+  final nonce = Uint8List.fromList(
+      pinenacl.PineNaClUtils.randombytes(ENCRYPTION_NONCE_LENGTH));
+
+  final box = pinenacl.SecretBox(key);
+
+  // Encrypt the data.
+  final encryptedBytes = box.encrypt(Uint8List.fromList(data), nonce: nonce);
+
+  // Prepend the metadata.
+  final metadata = EncryptedFileMetadata(version: _v);
+  final metadataBytes = encodeEncryptedFileMetadata(metadata);
+  // data = ;
+
+  // Prepend the nonce to the final data.
+  return Uint8List.fromList(nonce + metadataBytes + encryptedBytes.cipherText); */
+}
+
+Tuple2<Uint8List, EncryptedFileMetadata> decryptRawData(
+    Uint8List data, Uint8List key) {
   if (key.length != ENCRYPTION_KEY_LENGTH) {
     throw 'wrong ENCRYPTION_KEY_LENGTH';
   }
@@ -139,8 +252,7 @@ dynamic decryptJSONFile(Uint8List data, Uint8List key) {
 
   // Parse the final decrypted message as json.
   // print(decryptedBytes.toString().replaceAll(' ', ''));
-  final jsonData = json.decode(utf8.decode(decryptedBytes));
-  return {'_data': jsonData, '_v': metadata.version};
+  return Tuple2(decryptedBytes, metadata);
 }
 
 /**
@@ -150,8 +262,9 @@ dynamic decryptJSONFile(Uint8List data, Uint8List key) {
  * @param key - The encryption key.
  * @returns - The encrypted data.
  */
-Uint8List encryptJSONFile(Map fullData, Uint8List key) {
-  final dynamic _data = fullData['_data'];
+Uint8List encryptRawData(Uint8List data /* Map fullData */, Uint8List key,
+    {int version = ENCRYPTED_JSON_RESPONSE_VERSION}) {
+/*   final dynamic _data = fullData['_data'];
   final int _v = fullData['_v'];
 
   /* validateObject("fullData._data", _data, "parameter");
@@ -162,7 +275,7 @@ Uint8List encryptJSONFile(Map fullData, Uint8List key) {
   }
 
   // Stringify the json and convert to bytes.
-  var data = utf8.encode(json.encode(_data));
+  var data = utf8.encode(json.encode(_data)); */
 
   // Add padding so that the final size will be a padded block. The overhead will be added by encryption and we add the nonce at the end.
   /* final finalSize = padFileSize(data.length) -
@@ -171,9 +284,10 @@ Uint8List encryptJSONFile(Map fullData, Uint8List key) {
   final totalOverhead = ENCRYPTION_OVERHEAD_LENGTH +
       ENCRYPTION_NONCE_LENGTH +
       ENCRYPTION_HIDDEN_FIELD_METADATA_LENGTH;
+
   final finalSize = padFileSize(data.length + totalOverhead) - totalOverhead;
 
-  data = Uint8List.fromList([...data, ...Uint8List(finalSize - data.length)]);
+  data = Uint8List.fromList(data + Uint8List(finalSize - data.length));
 
   // Generate a random nonce.
   final nonce = Uint8List.fromList(
@@ -185,7 +299,7 @@ Uint8List encryptJSONFile(Map fullData, Uint8List key) {
   final encryptedBytes = box.encrypt(Uint8List.fromList(data), nonce: nonce);
 
   // Prepend the metadata.
-  final metadata = EncryptedFileMetadata(version: _v);
+  final metadata = EncryptedFileMetadata(version: version);
   final metadataBytes = encodeEncryptedFileMetadata(metadata);
   // data = ;
 

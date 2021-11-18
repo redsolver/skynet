@@ -22,7 +22,9 @@
 
 /// Modified by redsolver, 2021
 
+import 'dart:async';
 import 'dart:convert' show base64, utf8;
+import 'dart:html';
 import 'dart:math' show max, min;
 import 'dart:typed_data' show BytesBuilder, Uint8List;
 import 'package:skynet/src/client.dart';
@@ -34,7 +36,7 @@ import 'package:http/http.dart' as http;
 import "package:path/path.dart" as p;
 
 /// This class is used for creating or resuming uploads.
-class SkynetTusClient {
+class SkynetTusClientWeb {
   /// Version of the tus protocol used by the client. The remote server needs to
   /// support this version, too.
   static final tusVersion = "1.0.0";
@@ -44,10 +46,7 @@ class SkynetTusClient {
   /// The tus server Uri
   final Uri url;
 
-  /// Storage used to save and retrieve upload URLs by its fingerprint.
-  final TusStore? store;
-
-  final XFileDart file;
+  // final XFileDart file;
 
   final Map<String, String>? metadata;
 
@@ -59,11 +58,11 @@ class SkynetTusClient {
 
   int? _fileSize;
 
-  String _fingerprint = "";
-
   String? _uploadMetadata;
 
   Uri? _uploadUrl;
+
+  late Uri uploadUrl;
 
   int? _offset;
 
@@ -71,19 +70,20 @@ class SkynetTusClient {
 
   Future? _chunkPatchFuture;
 
-  int? streamFileLength;
-  String streamFileName;
+  final int streamFileLength;
+  String filename;
+
 /*   Stream<Uint8List>? streamFileData;
   
   */
 
-  SkynetTusClient(
-    this.url,
-    this.file, {
+  SkynetTusClientWeb(
+    this.url, {
     required this.skynetClient,
-    required String fingerprint,
-    required this.streamFileName,
-    this.store,
+    // required String fingerprint,
+    required this.filename,
+    required this.streamFileLength,
+    // required this.streamFileName,
     this.headers,
     /*  this.streamFileData,
     this.streamFileLength,
@@ -91,30 +91,19 @@ class SkynetTusClient {
     this.metadata = const {},
     this.maxChunkSize = 512 * 1024,
   }) {
-    _fingerprint = fingerprint;
+    // _fingerprint = fingerprint;
     //  generateFingerprint() ?? "";
     _uploadMetadata = generateMetadata();
   }
 
-  /// Whether the client supports resuming
-  bool get resumingEnabled => store != null;
-
-  /// The URI on the server for the file
-  Uri? get uploadUrl => _uploadUrl;
-
-  /// The fingerprint of the file being uploaded
-  String get fingerprint => _fingerprint;
-
   /// The 'Upload-Metadata' header sent to server
   String get uploadMetadata => _uploadMetadata ?? "";
 
-  http.Client getHttpClient() => skynetClient.httpClient;
-
   /// Create a new [upload] throwing [ProtocolException] on server error
   create() async {
-    _fileSize = streamFileLength ?? (await file.length());
+    _fileSize = streamFileLength;
 
-    final client = getHttpClient();
+    // final client = getHttpClient();
     final createHeaders = Map<String, String>.from(headers ?? {})
       ..addAll({
         "Tus-Resumable": tusVersion,
@@ -124,7 +113,9 @@ class SkynetTusClient {
 
     // print('createHeaders $createHeaders');
 
-    final response = await client.post(url, headers: createHeaders);
+    final response =
+        await skynetClient.httpClient.post(url, headers: createHeaders);
+
     if (!(response.statusCode >= 200 && response.statusCode < 300) &&
         response.statusCode != 404) {
       throw ProtocolException(
@@ -142,39 +133,41 @@ class SkynetTusClient {
     _uploadUrl = _parseUrl(urlStr);
 
     // print('_uploadUrl $_uploadUrl');
-    store?.set(_fingerprint, _uploadUrl as Uri);
-  }
-
-  /// Check if possible to resume an already started upload
-  Future<bool> resume() async {
-    _fileSize = streamFileLength ?? (await file.length());
-    _pauseUpload = false;
-
-    if (!resumingEnabled) {
-      return false;
-    }
-
-    _uploadUrl = await store?.get(_fingerprint);
-
-    if (_uploadUrl == null) {
-      return false;
-    }
-    return true;
+    uploadUrl = _uploadUrl!;
   }
 
   /// Start or resume an upload in chunks of [maxChunkSize] throwing
   /// [ProtocolException] on server error
-  Future<String> upload({
+  Future<String> upload(
+    Stream<Blob> stream, {
     Function(double)? onProgress,
     Function()? onComplete,
   }) async {
-    if (!await resume()) {
-      await create();
-    }
+    await create();
 
-    final list = <int>[];
+    // final updateStream = StreamController<Null>.broadcast();
+    var temporaryCompleter = Completer();
 
-    bool streamClosed = false;
+    // var list = Uint8List(0);
+    Blob blob = Blob([]);
+    int totalBytes = _fileSize as int;
+
+    stream.listen((event) {
+      // print('got blob ${event.size}');
+      blob = Blob([blob, event]);
+      // updateStream.add(null);
+      temporaryCompleter.complete();
+      temporaryCompleter = Completer();
+
+      /*     if (!(blob.size < maxChunkSize &&
+          ((_offset ?? 0) + blob.size) != totalBytes)) {
+        updateStream.add(null);
+      } */
+      // list = Uint8List.fromList(list + event);
+      // list.addAll(event);
+    });
+
+    // bool streamClosed = false;
 
 /*     if (streamFileData != null) {
       streamFileData!.listen((event) {
@@ -189,14 +182,21 @@ class SkynetTusClient {
     } */
 
     // get offset from server
-    _offset = await _getOffset();
-
-    int totalBytes = _fileSize as int;
+    _offset = 0; // await _getOffset();
 
     // start upload
-    final client = getHttpClient();
+    // final client = getHttpClient();
 
     while (!_pauseUpload && (_offset ?? 0) < totalBytes) {
+      while (blob.size < maxChunkSize &&
+          ((_offset ?? 0) + blob.size) != totalBytes) {
+        /*       print(
+            '${blob.size} < ${maxChunkSize} && ((${_offset} ?? 0) + list.length) != ${totalBytes}'); */
+        await temporaryCompleter.future;
+
+        // await Future.delayed(Duration(milliseconds: 10));
+      }
+
       //print('_offset $_offset');
       final uploadHeaders = Map<String, String>.from(headers ?? {})
         ..addAll({
@@ -219,7 +219,6 @@ class SkynetTusClient {
     }
 
     final bytesRead = min(maxChunkSize, b.length);
-    _offset = (_offset ?? 0) + bytesRead;
     return b.toBytes(); */
 
       /* TODO  if (streamFileData != null) {
@@ -237,23 +236,98 @@ class SkynetTusClient {
         list.removeRange(start, end);
       } else { */
       print('HTTP PATCH start $_uploadUrl');
-      _chunkPatchFuture = client.patch(
+
+      final completer = Completer<int>();
+
+      final request = HttpRequest();
+      request.withCredentials = true;
+
+      /*    void handleEvent(dynamic event) {
+        print('handleEvent $event');
+      }
+ */
+      /*  request.onProgress.listen((event) {
+        print('onProgress $event');
+      });
+
+      request.addEventListener('loadstart', handleEvent);
+      request.addEventListener('load', handleEvent);
+      request.addEventListener('loadend', handleEvent);
+      request.addEventListener('progress', handleEvent);
+      request.addEventListener('error', handleEvent);
+      request.addEventListener('abort', handleEvent); */
+      /*    request.upload.onProgress.listen((event) {
+        print('onProgress $event');
+      }); */
+      request.open('PATCH', _uploadUrl.toString());
+
+      /*  request.upload.onProgress.listen((event) {
+        print('onProgress $event');
+      }); */
+
+      for (final entry in uploadHeaders.entries) {
+        request.setRequestHeader(entry.key, entry.value);
+      }
+
+// upload progress event
+/*       request.upload.addEventListener('progress', (e) {
+        print('progress event');
+        final event = (e as ProgressEvent);
+        final progress = (event.loaded! / event.total!);
+        print('uploadProgress $progress');
+      }); */
+
+// AJAX request finished event
+      request.addEventListener('load', (e) {
+        completer.complete(request.status);
+        /* // HTTP status message
+	console.log(request.status);
+
+	// request.response will hold the response from the server
+	console.log(request.response); */
+      });
+
+// send POST request to server side script
+      final length = min(blob.size, maxChunkSize);
+      _offset = (_offset ?? 0) + length;
+
+      final data = blob.slice(0, length);
+
+      request.send(Blob([data]));
+
+      /* final res = await promiseToFuture<AxiosResponse>(request(AxiosSettings(
+          method: 'PATCH',
+          url: _uploadUrl.toString(),
+          data: data,
+          headers: uploadHeaders,
+          onUploadProgress: allowInterop((p) {
+            print('onUploadProgress $p');
+          })))); */
+
+      blob = blob.slice(length);
+
+      // list = list.sublist(length);
+
+      final statusCode = await completer.future;
+
+      /*      _chunkPatchFuture = client.patch(
         _uploadUrl as Uri,
         headers: uploadHeaders,
-        body: await _getData(),
-      );
+        body: 
+      ); */
       // }
-      final response = await _chunkPatchFuture;
+      // final response = await _chunkPatchFuture;
       print('HTTP PATCH done');
       _chunkPatchFuture = null;
 
       // check if correctly uploaded
-      if (!(response.statusCode >= 200 && response.statusCode < 300)) {
+      if (!(statusCode >= 200 && statusCode < 300)) {
         throw ProtocolException(
-            "unexpected status code (${response.statusCode}) while uploading chunk: ${response.body}");
+            "unexpected status code (${statusCode}) while uploading chunk: ${request.response}");
       }
 
-      int? serverOffset = _parseOffset(response.headers["upload-offset"]);
+      int? serverOffset =
+          _parseOffset(request.responseHeaders["upload-offset"]);
       if (serverOffset == null) {
         throw ProtocolException(
             "response to PATCH request contains no or invalid Upload-Offset header");
@@ -262,11 +336,10 @@ class SkynetTusClient {
         throw ProtocolException(
             "response contains different Upload-Offset value ($serverOffset) than expected ($_offset)");
       }
-      // print('body ${(response as http.Response).body}');
 
       // update progress
       if (onProgress != null) {
-        onProgress((_offset ?? 0) / totalBytes * 100);
+        onProgress((_offset ?? 0) / totalBytes);
       }
 
       if (_offset == totalBytes) {
@@ -276,7 +349,7 @@ class SkynetTusClient {
       }
     }
 
-    final Uri? location = await store?.get(_fingerprint);
+    final Uri? location = uploadUrl;
 
     if (location == null) {
       throw ProtocolException("upload location not found");
@@ -288,10 +361,7 @@ class SkynetTusClient {
       });
 
     final finalUri =
-        location; /* Uri.https(
-      skynetClient.portalHost,
-      '/skynet/tus/' + location.pathSegments.last,
-    ); */
+        location;
 
     final res = await skynetClient.httpClient.head(
       finalUri,
@@ -308,31 +378,19 @@ class SkynetTusClient {
       return element.split(' ');
     }).firstWhere((element) => element[0] == 'Skylink')[1];
 
-    this.onComplete();
+    //this.onComplete();
 
     // TODO https://github.com/SkynetLabs/skynet-js/pull/154
     // return res.headers['skynet-skylink']!;
     return utf8.decode(base64.decode(skylink));
   }
 
-  /// Pause the current upload
-  pause() {
-    _pauseUpload = true;
-    _chunkPatchFuture?.timeout(Duration.zero, onTimeout: () {});
-  }
-
-  /// Actions to be performed after a successful upload
-  void onComplete() {
-    store?.remove(_fingerprint);
-  }
-
-
   /// Override this to customize creating 'Upload-Metadata'
   String generateMetadata() {
     final meta = Map<String, String>.from(metadata ?? {});
 
     if (!meta.containsKey("filename")) {
-      meta["filename"] = p.basename(streamFileName);
+      meta["filename"] = p.basename(filename);
     }
 
     return meta.entries
@@ -341,47 +399,6 @@ class SkynetTusClient {
         .join(",");
   }
 
-  /// Get offset from server throwing [ProtocolException] on error
-  Future<int> _getOffset() async {
-    final client = getHttpClient();
-
-    final offsetHeaders = Map<String, String>.from(headers ?? {})
-      ..addAll({
-        "Tus-Resumable": tusVersion,
-      });
-    final response =
-        await client.head(_uploadUrl as Uri, headers: offsetHeaders);
-
-    if (!(response.statusCode >= 200 && response.statusCode < 300)) {
-      throw ProtocolException(
-          "unexpected status code (${response.statusCode}) while resuming upload");
-    }
-
-    int? serverOffset = _parseOffset(response.headers["upload-offset"]);
-    if (serverOffset == null) {
-      throw ProtocolException(
-          "missing upload offset in response for resuming upload");
-    }
-    return serverOffset;
-  }
-
-  /// Get data from file to upload
-  Future<Uint8List> _getData() async {
-    int start = _offset ?? 0;
-    int end = (_offset ?? 0) + maxChunkSize;
-    end = end > (_fileSize ?? 0) ? _fileSize ?? 0 : end;
-    // final fileChunk = await file.openRead(start, end).first;
-    var b = BytesBuilder();
-
-    /* final fileChunk = */
-    await for (final chunk in file.openRead(start, end)) {
-      b.add(chunk);
-    }
-
-    final bytesRead = min(maxChunkSize, b.length);
-    _offset = (_offset ?? 0) + bytesRead;
-    return b.toBytes();
-  }
 
   int? _parseOffset(String? offset) {
     if (offset == null || offset.isEmpty) {

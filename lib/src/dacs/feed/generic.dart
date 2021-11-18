@@ -6,9 +6,38 @@ import 'package:tuple/tuple.dart';
 
 const FEED_DAC_DOMAIN = "feed-dac.hns";
 
+Future<Post?> loadPost(String ref, {required SkynetClient skynetClient}) async {
+  /* final pageData = await skynetClient.file.getJSON(userId,
+      '${FEED_DAC_DOMAIN}/${currentSkapp}/posts/page_${skappCurrentPage[currentSkapp]}.json'); */
+
+  final uri = Uri.tryParse(ref);
+
+  if (uri == null) throw 'Invalid URI';
+
+  var userId = uri.host;
+
+  if (userId.startsWith('ed25519-')) {
+    userId = userId.substring(8);
+  } else if (userId.length == 64) {
+  } else {
+    throw 'FeedDAC: Unsupported userId format';
+  }
+
+  final res = await skynetClient.file
+      .getJSONWithRevision(userId, uri.path.substring(1));
+
+  if (res.data == null) {
+    return null;
+  }
+
+  final index = int.tryParse(uri.fragment);
+
+  return Post.fromJson(res.data['items'][index]);
+}
+
 // TODO Limit
 Stream<List<Post>> loadPostsForUser(String userId,
-    {required SkynetClient skynetClient}) async* {
+    {required SkynetClient skynetClient, int minItemsPerPage = 8}) async* {
   /*    LoadingState state = LoadingState.loadMore;
 
 enum LoadingState {
@@ -33,7 +62,6 @@ void main() async {
 
 /* Stream<List<Post>> loadPosts(
     int minPageLength, Stream<Null> pageLoading) async* { */
-  const minItemsPerPage = 8;
 
   userId = trimUserIdPrefix(userId);
 

@@ -70,7 +70,7 @@ Future<SignedRegistryEntry?> getEntry(
     }
     throw Exception('unexpected response status code ${res.statusCode}');
   } catch (e, st) {
-    print(e);
+    // print(e);
     // print(st);
     return null;
   }
@@ -160,7 +160,8 @@ Future<bool> setEntryRaw(
   if (res.statusCode == 204) {
     return true;
   }
-  throw Exception('unexpected response status code ${res.statusCode}');
+  throw Exception(
+      'unexpected response status code ${res.statusCode} ${res.body}');
 }
 
 String getEntryLink(
@@ -180,4 +181,22 @@ String getEntryLink(
 
   final skylink = newSkylinkV2(siaPublicKey, tweak).toString();
   return skylink;
+}
+
+Uint8List getEntryLinkRaw(
+  String userId,
+  String datakey, {
+  String? hashedDatakey,
+  /* required SkynetClient skynetClient, */
+}) {
+  userId = trimUserIdPrefix(userId);
+  Uint8List tweak;
+  if (hashedDatakey != null) {
+    tweak = Uint8List.fromList(hex.decode(hashedDatakey));
+  } else {
+    tweak = hashDatakey(datakey);
+  }
+  final siaPublicKey = newEd25519PublicKey(userId);
+
+  return newSkylinkV2(siaPublicKey, tweak).toBytes();
 }

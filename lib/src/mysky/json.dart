@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:convert/convert.dart';
+import 'package:cryptography/cryptography.dart' hide MacAlgorithm;
 import 'package:pinenacl/api.dart';
 import 'package:skynet/src/client.dart';
 import 'package:skynet/src/crypto.dart';
@@ -32,7 +33,7 @@ Future<dynamic?> getJSON(
     }
     return data;
   } catch (e) {
-    print(e);
+    // print(e);
     return null;
   }
 }
@@ -68,6 +69,7 @@ Future<bool> setJSON(
   int revision, {
   String filename = 'skynet-dart-sdk.json',
   required SkynetClient skynetClient,
+  Function? signRegistryEntry,
 }) async {
   /*  try { */
   final datakey = deriveDiscoverableTweak(path);
@@ -114,8 +116,15 @@ Future<bool> setJSON(
 
   rv.hashedDatakey = datakey;
 
-  // sign it
-  final sig = await skynetUser.sign(rv.hash());
+  Signature sig;
+
+  if (signRegistryEntry != null) {
+    sig =
+        Signature(await signRegistryEntry(rv), publicKey: skynetUser.publicKey);
+  } else {
+    // sign it
+    sig = await skynetUser.sign(rv.hash());
+  }
 
   final srv = SignedRegistryEntry(signature: sig, entry: rv);
 

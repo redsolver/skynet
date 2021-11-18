@@ -12,7 +12,7 @@ Post _$PostFromJson(Map<String, dynamic> json) {
     content: json['content'] == null
         ? null
         : PostContent.fromJson(json['content'] as Map<String, dynamic>),
-    id: json['id'] as int?,
+    id: json['id'] is String ? 0 : json['id'] as int?,
     isDeleted: json['isDeleted'] as bool?,
     mentions:
         (json['mentions'] as List<dynamic>?)?.map((e) => e as String).toList(),

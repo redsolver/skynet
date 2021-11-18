@@ -11,6 +11,7 @@ class MySky {
 
   Future<void> load(
     String skappDomain, {
+    Map? options,
     required SkynetClient skynetClient,
   }) async {
     // skynetClient ??= SkynetClient();
@@ -20,11 +21,13 @@ class MySky {
     _jsMySky = await promiseToFuture<JSMySky>(
       client.loadMySky(
         skappDomain,
+        jsify(options ?? {}),
         /* CustomConnectorOptions(
           debug: true,
         ), */
       ),
     );
+    // windowMySky = _jsMySky;
   }
 
   Future<void> loadDACs(List<DAC> dacs) async {

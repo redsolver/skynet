@@ -49,6 +49,13 @@ class SkynetUser {
     return user;
   }
 
+  static Future<SkynetUser> fromMySkySeedRaw(Uint8List seed) async {
+    final bytes = deriveRootDiscoverableKeyFromSeed(seed);
+    final user = await SkynetUser.createFromSeedAsync(bytes);
+    user.rawSeed = seed;
+    return user;
+  }
+
   SkynetUser.fromSeedAsync(List<int> usedSeed) {
     discoverableSeed = usedSeed;
 
