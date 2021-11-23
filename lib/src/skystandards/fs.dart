@@ -140,6 +140,7 @@ class FileData {
     required this.ts,
     required this.url,
     required this.size,
+    this.padding = 0,
     this.ext,
   });
 
@@ -156,6 +157,8 @@ class FileData {
      * maxiumum size of every unencrypted file chunk in bytes
      */
   int chunkSize;
+
+  int padding;
   /**
      * Which algorithm is used to encrypt and decrypt this file
      */

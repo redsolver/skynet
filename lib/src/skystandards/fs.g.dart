@@ -93,6 +93,7 @@ FileData _$FileDataFromJson(Map<String, dynamic> json) {
   return FileData(
     ext: json['ext']?.cast<String, dynamic>(),
     chunkSize: json['chunkSize'] as int,
+    padding: (json['padding'] ?? 0) as int,
     encryptionType: json['encryptionType'] as String,
     hash: json['hash'] as String,
     key: json['key'] as String,
@@ -106,6 +107,7 @@ Map<String, dynamic> _$FileDataToJson(FileData instance) {
   final val = <String, dynamic>{
     'size': instance.size,
     'chunkSize': instance.chunkSize,
+    'padding': instance.padding,
     'encryptionType': instance.encryptionType,
     'hash': instance.hash,
     'key': instance.key,
