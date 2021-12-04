@@ -142,6 +142,7 @@ class FileData {
     required this.size,
     this.padding = 0,
     this.ext,
+    this.hashes,
   });
 
   /**
@@ -167,6 +168,8 @@ class FileData {
      * Multihash of the unencrypted file, starts with 1220 for sha256
      */
   String hash;
+
+  List<String>? hashes;
   /**
      * The secret key used to encrypt this file, base64Url-encoded
      */

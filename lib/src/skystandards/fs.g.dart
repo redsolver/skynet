@@ -100,6 +100,7 @@ FileData _$FileDataFromJson(Map<String, dynamic> json) {
     ts: json['ts'] as int,
     url: json['url'] as String,
     size: json['size'] as int,
+    hashes: json['hashes']?.cast<String>(),
   );
 }
 
@@ -122,5 +123,6 @@ Map<String, dynamic> _$FileDataToJson(FileData instance) {
   }
 
   writeNotNull('ext', instance.ext);
+  writeNotNull('hashes', instance.hashes);
   return val;
 }
