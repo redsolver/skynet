@@ -283,13 +283,15 @@ class _SkynetClientUpload {
   Future<String?> uploadFileWithStream(
     SkyFile file,
     int length,
-    Stream<Uint8List> readStream,
-  ) =>
+    Stream<Uint8List> readStream, {
+    Function(double)? onProgress,
+  }) =>
       upload_impl.uploadFileWithStream(
         file,
         length,
         readStream,
         skynetClient: _skynetClient,
+        onProgress: onProgress,
       );
 
   Future<String?> uploadLargeFile(

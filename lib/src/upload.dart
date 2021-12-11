@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -51,10 +52,29 @@ Future<String?> uploadFileWithStream(
   int length,
   Stream<Uint8List> readStream, {
   required SkynetClient skynetClient,
+  Function(double)? onProgress,
 }) async {
   var uri = Uri.https(skynetClient.portalHost, '/skynet/skyfile');
 
-  var stream = http.ByteStream(readStream);
+  var uploadedLength = 0;
+
+  var stream = http.ByteStream(onProgress == null
+      ? readStream
+      : readStream.transform(
+          StreamTransformer.fromHandlers(
+            handleData: (data, sink) {
+              uploadedLength += data.length;
+              onProgress(uploadedLength / length);
+              sink.add(data);
+            },
+            handleError: (error, stack, sink) {
+              print(error.toString());
+            },
+            handleDone: (sink) {
+              sink.close();
+            },
+          ),
+        ));
 
   var request = http.MultipartRequest("POST", uri);
 
