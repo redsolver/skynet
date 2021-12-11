@@ -58,13 +58,20 @@ Future<String?> uploadFileWithStream(
 
   var uploadedLength = 0;
 
+  StreamSubscription? sub;
+
+  if (onProgress != null) {
+    sub = Stream.periodic(Duration(milliseconds: 100)).listen((event) {
+      onProgress(uploadedLength / length);
+    });
+  }
+
   var stream = http.ByteStream(onProgress == null
       ? readStream
       : readStream.transform(
           StreamTransformer.fromHandlers(
             handleData: (data, sink) {
               uploadedLength += data.length;
-              onProgress(uploadedLength / length);
               sink.add(data);
             },
             handleError: (error, stack, sink) {
@@ -98,6 +105,8 @@ Future<String?> uploadFileWithStream(
   }
 
   final res = await response.stream.transform(utf8.decoder).join();
+
+  sub?.cancel();
 
   final resData = json.decode(res);
 
