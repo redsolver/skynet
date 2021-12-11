@@ -22,6 +22,7 @@
 
 /// Modified by redsolver, 2021
 
+import 'dart:async';
 import 'dart:convert' show base64, utf8;
 import 'dart:math' show max, min;
 import 'dart:typed_data' show BytesBuilder, Uint8List;
@@ -66,6 +67,8 @@ class SkynetTusClient {
   Uri? _uploadUrl;
 
   int? _offset;
+
+  int uploadedOffset = 0;
 
   bool _pauseUpload = false;
 
@@ -128,7 +131,7 @@ class SkynetTusClient {
     if (!(response.statusCode >= 200 && response.statusCode < 300) &&
         response.statusCode != 404) {
       throw ProtocolException(
-          "unexpected status code (${response.statusCode}) while creating upload");
+          "unexpected status code (${response.statusCode}) while creating upload: ${response.body}");
     }
 
     String urlStr = response.headers["location"] ?? "";
@@ -237,20 +240,54 @@ class SkynetTusClient {
         list.removeRange(start, end);
       } else { */
       print('HTTP PATCH start $_uploadUrl');
-      _chunkPatchFuture = client.patch(
+
+      var uploadedLength = 0;
+
+      StreamSubscription? sub;
+
+      var stream = http.ByteStream(_getDataStream().transform(
+        StreamTransformer.fromHandlers(
+          handleData: (data, sink) {
+            uploadedLength += data.length;
+            sink.add(data);
+          },
+          handleError: (error, stack, sink) {
+            print(error.toString());
+          },
+          handleDone: (sink) {
+            sink.close();
+          },
+        ),
+      ));
+
+      final req = CustomStreamedRequest('PATCH', _uploadUrl as Uri, stream);
+
+      req.headers.addAll(uploadHeaders);
+
+      if (onProgress != null) {
+        sub = Stream.periodic(Duration(milliseconds: 100)).listen((event) {
+          onProgress((uploadedOffset + uploadedLength) / totalBytes);
+        });
+      }
+
+      final response = await client.send(req);
+
+      /* _chunkPatchFuture = client.patch(
         _uploadUrl as Uri,
         headers: uploadHeaders,
         body: await _getData(),
-      );
+      ); */
       // }
-      final response = await _chunkPatchFuture;
+//       final response = await _chunkPatchFuture;
       print('HTTP PATCH done');
       _chunkPatchFuture = null;
+
+      sub?.cancel();
 
       // check if correctly uploaded
       if (!(response.statusCode >= 200 && response.statusCode < 300)) {
         throw ProtocolException(
-            "unexpected status code (${response.statusCode}) while uploading chunk: ${response.body}");
+            "unexpected status code (${response.statusCode}) while uploading chunk");
       }
 
       int? serverOffset = _parseOffset(response.headers["upload-offset"]);
@@ -265,9 +302,8 @@ class SkynetTusClient {
       // print('body ${(response as http.Response).body}');
 
       // update progress
-      if (onProgress != null) {
-        onProgress((_offset ?? 0) / totalBytes * 100);
-      }
+
+      uploadedOffset = _offset ?? 0;
 
       if (_offset == totalBytes) {
         if (onComplete != null) {
@@ -326,7 +362,6 @@ class SkynetTusClient {
     store?.remove(_fingerprint);
   }
 
-
   /// Override this to customize creating 'Upload-Metadata'
   String generateMetadata() {
     final meta = Map<String, String>.from(metadata ?? {});
@@ -366,6 +401,16 @@ class SkynetTusClient {
   }
 
   /// Get data from file to upload
+  Stream<Uint8List> _getDataStream() {
+    int start = _offset ?? 0;
+    int end = (_offset ?? 0) + maxChunkSize;
+    end = end > (_fileSize ?? 0) ? _fileSize ?? 0 : end;
+
+    _offset = (_offset ?? 0) + (end - start);
+
+    return file.openRead(start, end);
+  }
+
   Future<Uint8List> _getData() async {
     int start = _offset ?? 0;
     int end = (_offset ?? 0) + maxChunkSize;
@@ -405,5 +450,18 @@ class SkynetTusClient {
       uploadUrl = uploadUrl.replace(scheme: url.scheme);
     }
     return uploadUrl;
+  }
+}
+
+class CustomStreamedRequest extends http.BaseRequest {
+  final http.ByteStream byteStream;
+
+  CustomStreamedRequest(String method, Uri url, this.byteStream)
+      : super(method, url);
+
+  @override
+  http.ByteStream finalize() {
+    super.finalize();
+    return byteStream;
   }
 }
