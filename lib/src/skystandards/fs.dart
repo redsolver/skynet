@@ -59,6 +59,9 @@ class DirectoryDirectory {
   String? uri;
 
   @JsonKey(ignore: true)
+  String? key;
+
+  @JsonKey(ignore: true)
   int? size;
 
   factory DirectoryDirectory.fromJson(Map<String, dynamic> json) =>
@@ -119,6 +122,9 @@ class DirectoryFile {
 
   @JsonKey(ignore: true)
   String? uri;
+
+  @JsonKey(ignore: true)
+  String? key;
 
   factory DirectoryFile.fromJson(Map<String, dynamic> json) =>
       _$DirectoryFileFromJson(json);
