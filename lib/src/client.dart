@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:http/http.dart';
@@ -27,6 +28,7 @@ class SkynetClient {
   late final _SkynetClientSkyDB skydb;
   late final _SkynetClientRegistry registry;
   late final _SkynetClientFile file;
+  late final _SkynetClientPortalAccount portalAccount;
 
   late final BaseClient httpClient;
   late Map<String, String>? headers;
@@ -48,6 +50,7 @@ class SkynetClient {
     skydb = _SkynetClientSkyDB(this);
     registry = _SkynetClientRegistry(this);
     file = _SkynetClientFile(this);
+    portalAccount = _SkynetClientPortalAccount(this);
   }
 
   String? resolveSkylink(String? link,
@@ -330,4 +333,60 @@ class _SkynetClientUpload {
         tryFiles: tryFiles,
         errorPages: errorPages,
       );
+}
+
+class _SkynetClientPortalAccount {
+  final SkynetClient _skynetClient;
+
+  _SkynetClientPortalAccount(this._skynetClient);
+
+  Uri _getAccountsApiUri(String path) {
+    return Uri.parse('https://account.${_skynetClient.portalHost}$path');
+  }
+
+  Future<Map> getUserInfo() async {
+    final res = await _skynetClient.httpClient.get(
+      _getAccountsApiUri(
+        '/api/user',
+      ),
+      headers: _skynetClient.headers,
+    );
+    return json.decode(res.body);
+  }
+
+  Future<Map> getStats() async {
+    final res = await _skynetClient.httpClient.get(
+      _getAccountsApiUri(
+        '/api/user/stats',
+      ),
+      headers: _skynetClient.headers,
+    );
+    return json.decode(res.body);
+  }
+
+  Future<Map> getDownloadsList({int pageSize = 10, int offset = 0}) async {
+    final res = await _skynetClient.httpClient.get(
+      _getAccountsApiUri(
+        '/api/user/downloads',
+      ).replace(queryParameters: {
+        'pageSize': pageSize.toString(),
+        'offset': offset.toString(),
+      }),
+      headers: _skynetClient.headers,
+    );
+    return json.decode(res.body);
+  }
+
+  Future<Map> getUploadsList({int pageSize = 10, int offset = 0}) async {
+    final res = await _skynetClient.httpClient.get(
+      _getAccountsApiUri(
+        '/api/user/uploads',
+      ).replace(queryParameters: {
+        'pageSize': pageSize.toString(),
+        'offset': offset.toString(),
+      }),
+      headers: _skynetClient.headers,
+    );
+    return json.decode(res.body);
+  }
 }

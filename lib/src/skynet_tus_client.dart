@@ -287,7 +287,7 @@ class SkynetTusClient {
       // check if correctly uploaded
       if (!(response.statusCode >= 200 && response.statusCode < 300)) {
         throw ProtocolException(
-            "unexpected status code (${response.statusCode}) while uploading chunk");
+            "unexpected status code (${response.statusCode}) while uploading chunk: ${await utf8.decodeStream(response.stream)}");
       }
 
       int? serverOffset = _parseOffset(response.headers["upload-offset"]);

@@ -3,11 +3,15 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:convert/convert.dart';
+import 'package:crypto/crypto.dart';
 
 import 'package:skynet/src/blake2b/blake2b_hash.dart';
 
 import 'encode_endian/base.dart';
 import 'encode_endian/encode_endian.dart';
+import 'package:cryptography/cryptography.dart' hide MacAlgorithm;
+
+final ed25519 = Ed25519();
 
 String decodeSkylinkFromRegistryEntry(Uint8List data) {
   if (data.length == 46) {
@@ -79,4 +83,36 @@ Uint8List hashRawDatakey(Uint8List datakey) {
     256,
     list,
   );
+}
+
+/**
+ * Generates a keypair from a given hash.
+ *
+ * @param hash - The hash.
+ * @returns - The keypair.
+ */
+Future<SimpleKeyPair> genKeyPairFromHash(Uint8List hash) async {
+  final hashBytes = hash.sublist(0, 32);
+
+  // const { publicKey, secretKey } = sign.keyPair.fromSeed(hashBytes);
+
+  final ed25519 = Ed25519();
+
+  return await ed25519.newKeyPairFromSeed(hashBytes);
+}
+
+/**
+ * Hashes the given message with the given salt applied.
+ *
+ * @param message - The message to hash (e.g. a seed).
+ * @param salt - The salt to apply.
+ * @returns - The hash.
+ */
+Uint8List hashWithSalt(Uint8List message, String salt) {
+  final s1 = sha512.convert(utf8.encode(salt)).bytes;
+  final s2 = sha512.convert(message).bytes;
+
+  final bytes = sha512.convert([...s1, ...s2]).bytes.sublist(0, 32);
+
+  return Uint8List.fromList(bytes);
 }

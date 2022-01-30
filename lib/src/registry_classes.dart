@@ -16,6 +16,7 @@ class RegistryEntry {
 
   RegistryEntry(
       {/* this.tweak, */ this.datakey,
+      this.hashedDatakey,
       required this.data,
       required this.revision});
 
