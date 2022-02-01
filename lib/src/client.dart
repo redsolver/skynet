@@ -364,6 +364,16 @@ class _SkynetClientPortalAccount {
     return json.decode(res.body);
   }
 
+  Future<Map> getLimits() async {
+    final res = await _skynetClient.httpClient.get(
+      _getAccountsApiUri(
+        '/api/limits',
+      ),
+      headers: _skynetClient.headers,
+    );
+    return json.decode(res.body);
+  }
+
   Future<Map> getDownloadsList({int pageSize = 10, int offset = 0}) async {
     final res = await _skynetClient.httpClient.get(
       _getAccountsApiUri(
