@@ -22,7 +22,7 @@ import 'http_client/client_stub.dart'
     if (dart.library.io) 'http_client/io_client.dart';
 
 class SkynetClient {
-  late final String portalHost;
+  late String portalHost;
 
   late final _SkynetClientUpload upload;
   late final _SkynetClientSkyDB skydb;
