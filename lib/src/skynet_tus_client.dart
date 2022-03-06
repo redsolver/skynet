@@ -24,7 +24,7 @@
 
 import 'dart:async';
 import 'dart:convert' show base64, utf8;
-import 'dart:math' show max, min;
+import 'dart:math' show max, min, pow;
 import 'dart:typed_data' show BytesBuilder, Uint8List;
 import 'package:skynet/src/client.dart';
 import 'package:tus_client/src/exceptions.dart';
@@ -199,78 +199,102 @@ class SkynetTusClient {
     // start upload
     final client = getHttpClient();
 
+    int retryCount = 0;
+
     while (!_pauseUpload && (_offset ?? 0) < totalBytes) {
       //print('_offset $_offset');
-      final uploadHeaders = Map<String, String>.from(headers ?? {})
-        ..addAll({
-          "Tus-Resumable": tusVersion,
-          "Upload-Offset": "$_offset",
-          "Content-Type": "application/offset+octet-stream"
-        });
-
-      // print('uploadHeaders $uploadHeaders');
-
-      /*     int start = _offset ?? 0;
-    int end = (_offset ?? 0) + maxChunkSize;
-    end = end > (_fileSize ?? 0) ? _fileSize ?? 0 : end;
-    // final fileChunk = await file.openRead(start, end).first;
-    var b = BytesBuilder();
-
-    /* final fileChunk = */
-    await for (final chunk in file.openRead(start, end)) {
-      b.add(chunk);
-    }
-
-    final bytesRead = min(maxChunkSize, b.length);
-    _offset = (_offset ?? 0) + bytesRead;
-    return b.toBytes(); */
-
-      /* TODO  if (streamFileData != null) {
-        while (list.length < maxChunkSize && !streamClosed) {
-          await Future.delayed(Duration(milliseconds: 10));
-        }
-        final start = 0;
-        final end = min(maxChunkSize, list.length);
-
-        _chunkPatchFuture = client.patch(
-          _uploadUrl as Uri,
-          headers: uploadHeaders,
-          body: Uint8List.fromList(list.sublist(start, end)),
-        );
-        list.removeRange(start, end);
-      } else { */
-      print('HTTP PATCH start $_uploadUrl');
-
-      var uploadedLength = 0;
-
       StreamSubscription? sub;
+      try {
+        final uploadHeaders = Map<String, String>.from(headers ?? {})
+          ..addAll({
+            "Tus-Resumable": tusVersion,
+            "Upload-Offset": "$_offset",
+            "Content-Type": "application/offset+octet-stream"
+          });
 
-      var stream = http.ByteStream(_getDataStream().transform(
-        StreamTransformer.fromHandlers(
-          handleData: (data, sink) {
-            uploadedLength += data.length;
-            sink.add(data);
-          },
-          handleError: (error, stack, sink) {
-            print(error.toString());
-          },
-          handleDone: (sink) {
-            sink.close();
-          },
-        ),
-      ));
+        print('HTTP PATCH start $_uploadUrl');
 
-      final req = CustomStreamedRequest('PATCH', _uploadUrl as Uri, stream);
+        var uploadedLength = 0;
 
-      req.headers.addAll(uploadHeaders);
+        var stream = http.ByteStream(_getDataStream().transform(
+          StreamTransformer.fromHandlers(
+            handleData: (data, sink) {
+              uploadedLength += data.length;
+              sink.add(data);
+            },
+            handleError: (error, stack, sink) {
+              print(error.toString());
+            },
+            handleDone: (sink) {
+              sink.close();
+            },
+          ),
+        ));
 
-      if (onProgress != null) {
-        sub = Stream.periodic(Duration(milliseconds: 100)).listen((event) {
-          onProgress((uploadedOffset + uploadedLength) / totalBytes);
+        final req = CustomStreamedRequest('PATCH', _uploadUrl as Uri, stream);
+
+        req.headers.addAll(uploadHeaders);
+
+        if (onProgress != null) {
+          sub = Stream.periodic(Duration(milliseconds: 100)).listen((event) {
+            onProgress((uploadedOffset + uploadedLength) / totalBytes);
+          });
+        }
+
+        final response = await client.send(req).timeout(
+            Duration(
+              minutes: 30,
+              // minutes: 1,
+            ), onTimeout: () {
+          throw Exception('Chunk upload timeout');
         });
-      }
 
-      final response = await client.send(req);
+        print('HTTP PATCH done');
+        _chunkPatchFuture = null;
+
+        sub?.cancel();
+
+        if (!(response.statusCode >= 200 && response.statusCode < 300)) {
+          throw ProtocolException(
+              "unexpected status code (${response.statusCode}) while uploading chunk: ${await utf8.decodeStream(response.stream)}");
+        }
+
+        int? serverOffset = _parseOffset(response.headers["upload-offset"]);
+        if (serverOffset == null) {
+          throw ProtocolException(
+              "response to PATCH request contains no or invalid Upload-Offset header");
+        }
+        if (_offset != serverOffset) {
+          throw ProtocolException(
+              "response contains different Upload-Offset value ($serverOffset) than expected ($_offset)");
+        }
+        // print('body ${(response as http.Response).body}');
+
+        // update progress
+
+        uploadedOffset = _offset ?? 0;
+
+        retryCount = 0;
+
+        if (_offset == totalBytes) {
+          if (onComplete != null) {
+            onComplete();
+          }
+        }
+      } catch (e, st) {
+        // TODO Handle errors
+
+        sub?.cancel();
+        _offset = _offsetBackup;
+
+        retryCount++;
+        if (retryCount > 10) {
+          throw 'Too many retries. ($e $st)';
+        }
+
+        print('CHUNK ERROR (try #$retryCount): $e $st');
+        await Future.delayed(Duration(seconds: pow(2, retryCount).round()));
+      }
 
       /* _chunkPatchFuture = client.patch(
         _uploadUrl as Uri,
@@ -279,37 +303,9 @@ class SkynetTusClient {
       ); */
       // }
 //       final response = await _chunkPatchFuture;
-      print('HTTP PATCH done');
-      _chunkPatchFuture = null;
-
-      sub?.cancel();
 
       // check if correctly uploaded
-      if (!(response.statusCode >= 200 && response.statusCode < 300)) {
-        throw ProtocolException(
-            "unexpected status code (${response.statusCode}) while uploading chunk: ${await utf8.decodeStream(response.stream)}");
-      }
 
-      int? serverOffset = _parseOffset(response.headers["upload-offset"]);
-      if (serverOffset == null) {
-        throw ProtocolException(
-            "response to PATCH request contains no or invalid Upload-Offset header");
-      }
-      if (_offset != serverOffset) {
-        throw ProtocolException(
-            "response contains different Upload-Offset value ($serverOffset) than expected ($_offset)");
-      }
-      // print('body ${(response as http.Response).body}');
-
-      // update progress
-
-      uploadedOffset = _offset ?? 0;
-
-      if (_offset == totalBytes) {
-        if (onComplete != null) {
-          onComplete();
-        }
-      }
     }
 
     final Uri? location = await store?.get(_fingerprint);
@@ -400,11 +396,15 @@ class SkynetTusClient {
     return serverOffset;
   }
 
+  int? _offsetBackup = 0;
+
   /// Get data from file to upload
   Stream<Uint8List> _getDataStream() {
     int start = _offset ?? 0;
     int end = (_offset ?? 0) + maxChunkSize;
     end = end > (_fileSize ?? 0) ? _fileSize ?? 0 : end;
+
+    _offsetBackup = _offset;
 
     _offset = (_offset ?? 0) + (end - start);
 
