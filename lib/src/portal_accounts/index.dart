@@ -75,7 +75,7 @@ Future<void> registerUserPubkey(
   final challengeResponse = await signChallenge(
     keyPair,
     challenge,
-    CHALLENGE_TYPE_LOGIN,
+    CHALLENGE_TYPE_REGISTER,
     portalRecipient,
   );
 
