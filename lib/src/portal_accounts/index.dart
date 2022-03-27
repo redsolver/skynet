@@ -96,7 +96,7 @@ Future<void> registerUserPubkey(
     body: json.encode(data),
   );
 
-  if (registerResponse.statusCode != 204) {
+  if (registerResponse.statusCode != 200) {
     throw 'HTTP ${registerResponse.statusCode}: ${registerResponse.body}';
   }
 
