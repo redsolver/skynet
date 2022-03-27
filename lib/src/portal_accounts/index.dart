@@ -64,6 +64,7 @@ Future<void> registerUserPubkey(
         'pubKey': hex.encode(publicKey.bytes),
       },
     ),
+    headers: client.headers,
   );
   final registerRequestResponseData = json.decode(registerRequestResponse.body);
 
@@ -88,7 +89,7 @@ Future<void> registerUserPubkey(
       'account.' + client.portalHost,
       endpointRegisterUserPubkey,
     ),
-    headers: {'content-type': 'application/json'},
+    headers: {'content-type': 'application/json'}..addAll(client.headers ?? {}),
     body: json.encode(data),
   );
 
