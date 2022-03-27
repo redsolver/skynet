@@ -28,7 +28,10 @@ const CHALLENGE_TYPE_LOGIN = "skynet-portal-login";
 /**
  * The type of the registration challenge.
  */
+
 const CHALLENGE_TYPE_REGISTER = "skynet-portal-register";
+
+const CHALLENGE_TYPE_UPDATE = "skynet-portal-update";
 
 const endpointLogin = "/api/login";
 const endpointLoginRequest = "/api/login";
@@ -75,7 +78,7 @@ Future<void> registerUserPubkey(
   final challengeResponse = await signChallenge(
     keyPair,
     challenge,
-    CHALLENGE_TYPE_REGISTER,
+    CHALLENGE_TYPE_UPDATE,
     portalRecipient,
   );
 
