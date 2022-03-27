@@ -36,6 +36,71 @@ const endpointLoginRequest = "/api/login";
 const endpointRegister = "/api/register";
 const endpointRegisterRequest = "/api/register";
 
+const endpointRegisterUserPubkey = "/api/user/pubkey/register";
+
+/**
+ * Registers a pubkey for the user for the given seed and tweak.
+ *
+ * @param client - The Skynet client.
+ * @param seed - The seed.
+ * @param tweak - The portal account tweak.
+ * @param [customOptions] - The custom register user options.
+ * @returns - An empty promise.
+ */
+Future<void> registerUserPubkey(
+  SkynetClient client,
+  Uint8List seed,
+  String tweak,
+) async {
+  final keyPair = await genPortalLoginKeypair(seed, tweak);
+
+  final publicKey = await keyPair.extractPublicKey();
+
+  final registerRequestResponse = await client.httpClient.get(
+    Uri.https(
+      'account.' + client.portalHost,
+      endpointRegisterUserPubkey,
+      {
+        'pubKey': hex.encode(publicKey.bytes),
+      },
+    ),
+  );
+  final registerRequestResponseData = json.decode(registerRequestResponse.body);
+
+  final challenge = registerRequestResponseData['challenge'];
+
+  final portalRecipient = getPortalRecipient(client.portalHost);
+
+  final challengeResponse = await signChallenge(
+    keyPair,
+    challenge,
+    CHALLENGE_TYPE_LOGIN,
+    portalRecipient,
+  );
+
+  final data = {
+    'response': challengeResponse.response,
+    'signature': challengeResponse.signature,
+  };
+
+  final registerResponse = await client.httpClient.post(
+    Uri.https(
+      'account.' + client.portalHost,
+      endpointRegisterUserPubkey,
+    ),
+    headers: {'content-type': 'application/json'},
+    body: json.encode(data),
+  );
+
+  if (registerResponse.statusCode != 204) {
+    throw 'HTTP ${registerResponse.statusCode}: ${registerResponse.body}';
+  }
+
+  /* final jwt = registerResponse.headers[JWT_HEADER_NAME]!.split(';').first;
+
+  return jwt; */
+}
+
 /**
  * Registers a user for the given seed and email.
  *
@@ -49,8 +114,9 @@ Future<String> register(
   SkynetClient client,
   Uint8List seed,
   String email,
+  String tweak,
 ) async {
-  final keyPair = await genPortalLoginKeypair(seed, email);
+  final keyPair = await genPortalLoginKeypair(seed, tweak);
 
   final publicKey = await keyPair.extractPublicKey();
 
@@ -69,14 +135,10 @@ Future<String> register(
 
   final registerRequestResponseData = json.decode(registerRequestResponse.body);
 
-  // print(registerRequestResponse.statusCode);
-  // print(registerRequestResponse.body);
-
   final challenge = registerRequestResponseData['challenge'];
-  // print(challenge);
 
   final portalRecipient = getPortalRecipient(client.portalHost);
-  // print(portalRecipient);
+
   final challengeResponse = await signChallenge(
     keyPair,
     challenge,
@@ -98,19 +160,13 @@ Future<String> register(
     headers: {'content-type': 'application/json'},
     body: json.encode(data),
   );
-  // print(registerResponse.statusCode);
-  // print(registerResponse.body);
-  // print(registerResponse.headers);
 
   if (registerResponse.statusCode != 200) {
     throw 'HTTP ${registerResponse.statusCode}: ${registerResponse.body}';
   }
 
   final jwt = registerResponse.headers[JWT_HEADER_NAME]!.split(';').first;
-/*   final decodedEmail = getEmailFromJWT(jwt);
-  if (decodedEmail !== email) {
-    throw new Error("Email not found in JWT or did not match provided email");
-  } */
+
   return jwt;
 }
 
@@ -126,9 +182,9 @@ Future<String> register(
 Future<String> login(
   SkynetClient client,
   Uint8List seed,
-  String email,
+  String tweak,
 ) async {
-  final keyPair = await genPortalLoginKeypair(seed, email);
+  final keyPair = await genPortalLoginKeypair(seed, tweak);
 
   final publicKey = await keyPair.extractPublicKey();
   final privateKey = await keyPair.extractPrivateKeyBytes();
@@ -143,14 +199,11 @@ Future<String> login(
     ),
   );
   final loginRequestResponseData = json.decode(loginRequestResponse.body);
-  // print(loginRequestResponse.statusCode);
-  // print(loginRequestResponse.body);
 
   final challenge = loginRequestResponseData['challenge'];
-  // print(challenge);
 
   final portalRecipient = getPortalRecipient(client.portalHost);
-  // print(portalRecipient);
+
   final challengeResponse = await signChallenge(
     keyPair,
     challenge,
@@ -161,7 +214,6 @@ Future<String> login(
   final data = {
     'response': challengeResponse.response,
     'signature': challengeResponse.signature,
-    'email': email,
   };
 
   final loginResponse = await client.httpClient.post(
@@ -173,21 +225,12 @@ Future<String> login(
     body: json.encode(data),
   );
 
-/*   // print(loginResponse.statusCode);
-  // print(loginResponse.body);
-  // print(loginResponse.headers); */
-
   if (loginResponse.statusCode != 204) {
     throw 'HTTP ${loginResponse.statusCode}: ${loginResponse.body}';
   }
 
   final jwt = loginResponse.headers[JWT_HEADER_NAME]!.split(';').first;
-  /*  final decodedEmail = getEmailFromJWT(jwt);
-  if (decodedEmail != email) {
-    throw  Exception(
-      "Email not found in JWT or did not match provided email. Expected: '${email}', received: '${decodedEmail}'"
-    );
-  } */
+
   return jwt;
 }
 
@@ -247,8 +290,8 @@ class ChallengeResponse {
  * @returns - The login keypair.
  */
 Future<SimpleKeyPair> genPortalLoginKeypair(
-    Uint8List seed, String email) async {
-  final hash = hashWithSalt(seed, email);
+    Uint8List seed, String tweak) async {
+  final hash = hashWithSalt(seed, tweak);
 
   return await genKeyPairFromHash(hash);
 }
