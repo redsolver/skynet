@@ -85,6 +85,7 @@ class NativeMySkyProvider extends MySkyProvider {
     // String filename = 'skynet-dart-sdk.json',
   ) async {
     final pathSeed = await getEncryptedFileSeed(path, false);
+    client.logPath(path);
     return mysky_io_impl.setEncryptedJSON(
       skynetUser,
       path,

@@ -26,6 +26,8 @@ dependencies:
     git: https://github.com/redsolver/tus_client.git
   html: ^0.15.0
   client_cookie: ^3.0.2
+  random_string: ^2.3.1
+  stash: ^4.0.1
 
 dev_dependencies:
   test: ^1.16.5

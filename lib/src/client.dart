@@ -1,11 +1,13 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:crypto/crypto.dart';
 import 'package:http/http.dart';
 import 'package:skynet/src/file.dart';
 import 'package:skynet/src/registry_classes.dart';
 import 'package:skynet/src/utils/detect_portal/detect_portal.dart';
 import 'package:skynet/src/utils/url.dart';
+import 'package:stash/stash_api.dart';
 import 'data_with_revision.dart';
 import 'resolve.dart' as resolve_impl;
 import 'pin.dart' as pin_impl;
@@ -30,10 +32,20 @@ class SkynetClient {
   late final _SkynetClientFile file;
   late final _SkynetClientPortalAccount portalAccount;
 
+  late final Vault<String>? _usedMySkyPaths;
+
   late final BaseClient httpClient;
   late Map<String, String>? headers;
 
-  SkynetClient({String? portal, String? cookie}) {
+  void logPath(String path) {
+    if (_usedMySkyPaths == null) return;
+    final key = md5.convert(utf8.encode(path)).toString();
+    _usedMySkyPaths?.putIfAbsent(key, path);
+  }
+
+  SkynetClient(
+      {String? portal, String? cookie, Vault<String>? usedMySkyPathsVault}) {
+    _usedMySkyPaths = usedMySkyPathsVault;
     portal ??= detectSkynetPortal();
 
     if (cookie != null) {
