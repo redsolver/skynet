@@ -39,7 +39,7 @@ class SkynetClient {
 
   void logPath(String path) {
     if (_usedMySkyPaths == null) return;
-    final key = md5.convert(utf8.encode(path)).toString();
+    final key = base64Url.encode(sha1.convert(utf8.encode(path)).bytes);
     _usedMySkyPaths?.putIfAbsent(key, path);
   }
 
