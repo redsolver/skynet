@@ -411,4 +411,17 @@ class _SkynetClientPortalAccount {
     );
     return json.decode(res.body);
   }
+
+  Future<void> unpinSkylink(String skylink) async {
+    final res = await _skynetClient.httpClient.delete(
+      _getAccountsApiUri(
+        '/api/user/uploads/$skylink',
+      ),
+      headers: _skynetClient.headers,
+    );
+    if (res.statusCode != 204)
+      throw 'Unpin failed: ${res.statusCode} ${res.body}';
+
+    return;
+  }
 }
