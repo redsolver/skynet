@@ -92,11 +92,11 @@ Map<String, dynamic> _$DirectoryFileToJson(DirectoryFile instance) {
 FileData _$FileDataFromJson(Map<String, dynamic> json) {
   return FileData(
     ext: json['ext']?.cast<String, dynamic>(),
-    chunkSize: json['chunkSize'] as int,
-    padding: (json['padding'] ?? 0) as int,
-    encryptionType: json['encryptionType'] as String,
+    chunkSize: json['chunkSize'] as int?,
+    padding: (json['padding'] ?? 0) as int?,
+    encryptionType: json['encryptionType'] as String?,
     hash: json['hash'] as String,
-    key: json['key'] as String,
+    key: json['key'] as String?,
     ts: json['ts'] as int,
     url: json['url'] as String,
     size: json['size'] as int,
@@ -107,11 +107,7 @@ FileData _$FileDataFromJson(Map<String, dynamic> json) {
 Map<String, dynamic> _$FileDataToJson(FileData instance) {
   final val = <String, dynamic>{
     'size': instance.size,
-    'chunkSize': instance.chunkSize,
-    'padding': instance.padding,
-    'encryptionType': instance.encryptionType,
     'hash': instance.hash,
-    'key': instance.key,
     'ts': instance.ts,
     'url': instance.url,
   };
@@ -121,6 +117,10 @@ Map<String, dynamic> _$FileDataToJson(FileData instance) {
       val[key] = value;
     }
   }
+  writeNotNull('chunkSize', instance.chunkSize);
+  writeNotNull('padding', instance.padding);
+  writeNotNull('encryptionType', instance.encryptionType);
+  writeNotNull('key', instance.key);
 
   writeNotNull('ext', instance.ext);
   writeNotNull('hashes', instance.hashes);

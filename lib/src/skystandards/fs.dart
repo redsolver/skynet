@@ -163,13 +163,13 @@ class FileData {
   /**
      * maxiumum size of every unencrypted file chunk in bytes
      */
-  int chunkSize;
+  int? chunkSize;
 
-  int padding;
+  int? padding;
   /**
      * Which algorithm is used to encrypt and decrypt this file
      */
-  String encryptionType;
+  String? encryptionType;
   /**
      * Multihash of the unencrypted file, starts with 1220 for sha256
      */
@@ -179,7 +179,7 @@ class FileData {
   /**
      * The secret key used to encrypt this file, base64Url-encoded
      */
-  String key;
+  String? key;
   /**
      * Unix timestamp (in milliseconds) when this version was added to the FileSystem DAC
      */
