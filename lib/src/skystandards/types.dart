@@ -1,9 +1,7 @@
-// To parse this JSON data, do
-//
-//     final post = postFromJson(jsonString);
 
-import 'dart:convert';
+import 'dart:typed_data';
 
+import 'package:hive/hive.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'types.g.dart';
@@ -12,13 +10,47 @@ part 'types.g.dart';
 
 String postToJson(Post data) => json.encode(data.toJson()); */
 
+@HiveType(typeId: 120)
+class FeedPage {
+  final String $schema =
+      'https://skystandards.hns.siasky.net/draft-01/feedPage.schema.json';
+
+  @HiveField(1)
+  List<Post> items;
+
+  @HiveField(2)
+  final int revision;
+
+  FeedPage({this.revision = -1, required this.items});
+
+  Map toJson() => {
+        '\$schema': $schema,
+        'items': items,
+      };
+}
+
 /**
  * A representation of a post
  */
 @JsonSerializable(includeIfNull: false)
 class Post {
+  String get fullRef => id == null ? feedPageUri! : '$feedPageUri/$id';
+
+  String get userId => Uri.parse(fullRef).authority;
+
+  DateTime get postedAt => DateTime.fromMillisecondsSinceEpoch(ts!);
+
   @JsonKey(ignore: true)
-  String? fullId;
+  Map<String, int>? customReactionCounts;
+
+  @JsonKey(ignore: true)
+  int? customCommentCount;
+
+  @JsonKey(ignore: true)
+  int? customRepostCount;
+
+  @JsonKey(ignore: true)
+  String? feedPageUri;
 
   Post({
     this.commentTo,
@@ -65,7 +97,11 @@ class Post {
      */
   int? ts;
 
-  factory Post.fromJson(Map<String, dynamic> json) => _$PostFromJson(json);
+  factory Post.fromJson(Map<String, dynamic> json, {String? feedPageUri}) {
+    final post = _$PostFromJson(json);
+    post.feedPageUri = feedPageUri;
+    return post;
+  }
   Map<String, dynamic> toJson() => _$PostToJson(this);
 }
 
@@ -180,8 +216,15 @@ class Media {
   int? mediaDuration;
   List<Video>? video;
 
+  Video get preferredVideo => video!.first;
+  Image get preferredImage => image!.first;
+  Audio get preferredAudio => audio!.first;
+
   factory Media.fromJson(Map<String, dynamic> json) => _$MediaFromJson(json);
   Map<String, dynamic> toJson() => _$MediaToJson(this);
+
+  @JsonKey(ignore: true)
+  late Uint8List bytes;
 }
 
 /**
@@ -220,25 +263,25 @@ class Audio {
 @JsonSerializable(includeIfNull: false)
 class Image {
   Image({
-    required this.ext,
+    this.ext,
     required this.url,
-    required this.h,
-    required this.w,
+    this.h,
+    this.w,
   });
 
   /**
      * file extension of this media format
      */
-  String ext;
+  String? ext;
   String url;
   /**
      * Height of the image
      */
-  int h;
+  int? h;
   /**
      * Width of the image
      */
-  int w;
+  int? w;
   factory Image.fromJson(Map<String, dynamic> json) => _$ImageFromJson(json);
   Map<String, dynamic> toJson() => _$ImageToJson(this);
 }
