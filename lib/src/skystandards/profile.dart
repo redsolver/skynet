@@ -1,5 +1,6 @@
 import 'package:json_annotation/json_annotation.dart';
 import 'package:skynet/src/skystandards/types.dart';
+import 'package:hive/hive.dart';
 
 part 'profile.g.dart';
 
@@ -8,7 +9,9 @@ class Profile {
   @JsonKey(ignore: true)
   String? userId;
 
-  String getAvatarUrl() => avatar!.first.url;
+  String getAvatarUrl() => (avatar ?? []).isEmpty
+      ? 'sia://CABdyKgcVLkjdsa0HIjBfNicRv0pqU7YL-tgrfCo23DmWw'
+      : avatar!.first.url;
 
   Profile({
     required this.version,
@@ -18,12 +21,19 @@ class Profile {
     this.topics,
     this.avatar,
   });
+
   int version;
   String username;
   String? aboutMe;
   String? location;
   List<String>? topics;
   List<Image>? avatar;
+
+  @JsonKey(ignore: true)
+  List<Map>? rels;
+
+  @JsonKey(ignore: true)
+  Map<String, dynamic>? ext;
 
   bool get isTopic => userId![0] == '#';
 
@@ -51,5 +61,3 @@ class Profile {
       _$ProfileFromJson(json);
   Map<String, dynamic> toJson() => _$ProfileToJson(this);
 }
-
-// TODO Add Hive data
