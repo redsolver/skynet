@@ -1,12 +1,14 @@
 import 'package:json_annotation/json_annotation.dart';
-import 'package:skynet/src/skystandards/types.dart';
+import 'types.dart';
 import 'package:hive/hive.dart';
 
 part 'profile.g.dart';
 
+@HiveType(typeId: 110)
 @JsonSerializable(includeIfNull: false)
 class Profile {
   @JsonKey(ignore: true)
+  @HiveField(1)
   String? userId;
 
   String getAvatarUrl() => (avatar ?? []).isEmpty
@@ -22,26 +24,40 @@ class Profile {
     this.avatar,
   });
 
+  @HiveField(0)
   int version;
+
+  @HiveField(2)
   String username;
+
+  @HiveField(3)
   String? aboutMe;
+
+  @HiveField(4)
   String? location;
+
   List<String>? topics;
+
+  @HiveField(5)
   List<Image>? avatar;
 
-  @JsonKey(ignore: true)
+  @HiveField(6)
   List<Map>? rels;
-
-  @JsonKey(ignore: true)
-  Map<String, dynamic>? ext;
 
   bool get isTopic => userId![0] == '#';
 
   @JsonKey(ignore: true)
+  @HiveField(7)
   int? customFollowerCount;
 
   @JsonKey(ignore: true)
+  @HiveField(8)
   int? customFollowingCount;
+
+
+  @JsonKey(ignore: true)
+  @HiveField(9)
+  Map<String, dynamic>? ext;
 
   Profile.user({
     String? id,
