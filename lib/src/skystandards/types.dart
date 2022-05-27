@@ -150,7 +150,11 @@ class PostContent {
   /**
      * ISO 639-1 Alpha-2 language code
      */
+  @HiveField(11)
   String? lang;
+
+  @HiveField(12)
+  String? license;
   /**
      * Can be used as a link to a url referred by this post
      */

@@ -123,6 +123,7 @@ class PostContentAdapter extends TypeAdapter<PostContent> {
     return PostContent(
       ext: (fields[1] as Map?)?.cast<String, dynamic>(),
       files: (fields[2] as List?)?.cast<DirectoryFile>(),
+      lang: fields[11] as String?,
       link: fields[3] as String?,
       linkTitle: fields[4] as String?,
       media: fields[5] as Media?,
@@ -131,17 +132,21 @@ class PostContentAdapter extends TypeAdapter<PostContent> {
       text: fields[8] as String?,
       textContentType: fields[9] as String?,
       title: fields[10] as String?,
-    );
+    )..license = fields[12] as String?;
   }
 
   @override
   void write(BinaryWriter writer, PostContent obj) {
     writer
-      ..writeByte(10)
+      ..writeByte(12)
       ..writeByte(1)
       ..write(obj.ext)
       ..writeByte(2)
       ..write(obj.files)
+      ..writeByte(11)
+      ..write(obj.lang)
+      ..writeByte(12)
+      ..write(obj.license)
       ..writeByte(3)
       ..write(obj.link)
       ..writeByte(4)
@@ -408,7 +413,7 @@ PostContent _$PostContentFromJson(Map<String, dynamic> json) => PostContent(
       title: json['title'] as String?,
       topics:
           (json['topics'] as List<dynamic>?)?.map((e) => e as String).toList(),
-    );
+    )..license = json['license'] as String?;
 
 Map<String, dynamic> _$PostContentToJson(PostContent instance) {
   final val = <String, dynamic>{};
@@ -422,6 +427,7 @@ Map<String, dynamic> _$PostContentToJson(PostContent instance) {
   writeNotNull('ext', instance.ext);
   writeNotNull('files', instance.files);
   writeNotNull('lang', instance.lang);
+  writeNotNull('license', instance.license);
   writeNotNull('link', instance.link);
   writeNotNull('linkTitle', instance.linkTitle);
   writeNotNull('media', instance.media);
