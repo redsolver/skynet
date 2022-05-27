@@ -3,6 +3,212 @@
 part of 'fs.dart';
 
 // **************************************************************************
+// TypeAdapterGenerator
+// **************************************************************************
+
+class DirectoryIndexAdapter extends TypeAdapter<DirectoryIndex> {
+  @override
+  final int typeId = 121;
+
+  @override
+  DirectoryIndex read(BinaryReader reader) {
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
+    return DirectoryIndex(
+      directories: (fields[1] as Map).cast<String, DirectoryDirectory>(),
+      files: (fields[2] as Map).cast<String, DirectoryFile>(),
+    );
+  }
+
+  @override
+  void write(BinaryWriter writer, DirectoryIndex obj) {
+    writer
+      ..writeByte(2)
+      ..writeByte(1)
+      ..write(obj.directories)
+      ..writeByte(2)
+      ..write(obj.files);
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DirectoryIndexAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
+class DirectoryDirectoryAdapter extends TypeAdapter<DirectoryDirectory> {
+  @override
+  final int typeId = 122;
+
+  @override
+  DirectoryDirectory read(BinaryReader reader) {
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
+    return DirectoryDirectory(
+      name: fields[1] as String,
+      created: fields[2] as int,
+    )
+      ..uri = fields[3] as String?
+      ..key = fields[4] as String?;
+  }
+
+  @override
+  void write(BinaryWriter writer, DirectoryDirectory obj) {
+    writer
+      ..writeByte(4)
+      ..writeByte(2)
+      ..write(obj.created)
+      ..writeByte(1)
+      ..write(obj.name)
+      ..writeByte(3)
+      ..write(obj.uri)
+      ..writeByte(4)
+      ..write(obj.key);
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DirectoryDirectoryAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
+class DirectoryFileAdapter extends TypeAdapter<DirectoryFile> {
+  @override
+  final int typeId = 123;
+
+  @override
+  DirectoryFile read(BinaryReader reader) {
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
+    return DirectoryFile(
+      name: fields[1] as String,
+      created: fields[7] as int,
+      modified: fields[3] as int,
+      version: fields[2] as int,
+      file: fields[6] as FileData,
+      ext: (fields[8] as Map?)?.cast<String, dynamic>(),
+      history: (fields[5] as Map?)?.cast<String, FileData>(),
+      mimeType: fields[4] as String?,
+    )
+      ..uri = fields[9] as String?
+      ..key = fields[10] as String?;
+  }
+
+  @override
+  void write(BinaryWriter writer, DirectoryFile obj) {
+    writer
+      ..writeByte(10)
+      ..writeByte(8)
+      ..write(obj.ext)
+      ..writeByte(7)
+      ..write(obj.created)
+      ..writeByte(6)
+      ..write(obj.file)
+      ..writeByte(5)
+      ..write(obj.history)
+      ..writeByte(4)
+      ..write(obj.mimeType)
+      ..writeByte(3)
+      ..write(obj.modified)
+      ..writeByte(1)
+      ..write(obj.name)
+      ..writeByte(2)
+      ..write(obj.version)
+      ..writeByte(9)
+      ..write(obj.uri)
+      ..writeByte(10)
+      ..write(obj.key);
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DirectoryFileAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
+class FileDataAdapter extends TypeAdapter<FileData> {
+  @override
+  final int typeId = 124;
+
+  @override
+  FileData read(BinaryReader reader) {
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
+    return FileData(
+      chunkSize: fields[3] as int?,
+      encryptionType: fields[5] as String?,
+      hash: fields[6] as String,
+      key: fields[8] as String?,
+      ts: fields[9] as int,
+      url: fields[10] as String,
+      size: fields[2] as int,
+      padding: fields[4] as int?,
+      ext: (fields[1] as Map?)?.cast<String, dynamic>(),
+      hashes: (fields[7] as List?)?.cast<String>(),
+    );
+  }
+
+  @override
+  void write(BinaryWriter writer, FileData obj) {
+    writer
+      ..writeByte(10)
+      ..writeByte(1)
+      ..write(obj.ext)
+      ..writeByte(2)
+      ..write(obj.size)
+      ..writeByte(3)
+      ..write(obj.chunkSize)
+      ..writeByte(4)
+      ..write(obj.padding)
+      ..writeByte(5)
+      ..write(obj.encryptionType)
+      ..writeByte(6)
+      ..write(obj.hash)
+      ..writeByte(7)
+      ..write(obj.hashes)
+      ..writeByte(8)
+      ..write(obj.key)
+      ..writeByte(9)
+      ..write(obj.ts)
+      ..writeByte(10)
+      ..write(obj.url);
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FileDataAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
+// **************************************************************************
 // JsonSerializableGenerator
 // **************************************************************************
 
@@ -16,27 +222,16 @@ DirectoryIndex _$DirectoryIndexFromJson(Map<String, dynamic> json) =>
         (k, e) =>
             MapEntry(k, DirectoryFile.fromJson(e as Map<String, dynamic>)),
       ),
-      index: json['index'] as Map<String, dynamic>?,
       $schema: json[r'$schema'] as String? ??
           'https://skystandards.hns.siasky.net/draft-01/directoryIndex.schema.json',
     );
 
-Map<String, dynamic> _$DirectoryIndexToJson(DirectoryIndex instance) {
-  final val = <String, dynamic>{
-    r'$schema': instance.$schema,
-    'directories': instance.directories,
-    'files': instance.files,
-  };
-
-  void writeNotNull(String key, dynamic value) {
-    if (value != null) {
-      val[key] = value;
-    }
-  }
-
-  writeNotNull('index', instance.index);
-  return val;
-}
+Map<String, dynamic> _$DirectoryIndexToJson(DirectoryIndex instance) =>
+    <String, dynamic>{
+      r'$schema': instance.$schema,
+      'directories': instance.directories,
+      'files': instance.files,
+    };
 
 DirectoryDirectory _$DirectoryDirectoryFromJson(Map<String, dynamic> json) =>
     DirectoryDirectory(
