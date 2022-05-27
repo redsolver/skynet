@@ -42,6 +42,7 @@ class Profile {
   List<Image>? avatar;
 
   @HiveField(6)
+  @JsonKey(ignore: true)
   List<Map>? rels;
 
   bool get isTopic => userId![0] == '#';
