@@ -1,8 +1,8 @@
-
 import 'dart:typed_data';
 
 import 'package:hive/hive.dart';
 import 'package:json_annotation/json_annotation.dart';
+import 'package:skynet/src/skystandards/fs.dart';
 
 part 'types.g.dart';
 
@@ -126,7 +126,7 @@ class Post {
 class PostContent {
   PostContent({
     this.ext,
-    this.gallery,
+    this.files,
     this.lang,
     this.link,
     this.linkTitle,
@@ -144,14 +144,9 @@ class PostContent {
      */
   @HiveField(1)
   Map<String, dynamic>? ext;
-  /**
-     * List of media objects in a "gallery", can be show in a carousel or list
-     * useful for app screenshots or galleries
-     * NOT TO BE USED for something like music albums, because it prevents individual tracks
-     * from being referenced, saved, rated, reposted...
-     */
+
   @HiveField(2)
-  List<Media>? gallery;
+  List<DirectoryFile>? files;
   /**
      * ISO 639-1 Alpha-2 language code
      */
