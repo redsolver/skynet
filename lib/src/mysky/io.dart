@@ -72,7 +72,9 @@ Future<DataWithRevision<dynamic>> getEncryptedJSONWithRevision(
 
     // download the data in that Skylink
     final res = await skynetClient.httpClient.get(
-      Uri.https(skynetClient.portalHost, '$skylink'),
+      Uri.parse(
+        '${skynetClient.portalProtocol}://${skynetClient.portalHost}/$skylink',
+      ),
       headers: skynetClient.headers,
     );
 
@@ -114,7 +116,9 @@ Future<DataWithRevision<dynamic>> getJSONEncrypted(
 
     // download the data in that Skylink
     final res = await skynetClient.httpClient.get(
-      Uri.https(skynetClient.portalHost, '$skylink'),
+      Uri.parse(
+        '${skynetClient.portalProtocol}://${skynetClient.portalHost}/$skylink',
+      ),
       headers: skynetClient.headers,
     );
 
@@ -157,6 +161,14 @@ Future<DataWithRevision<dynamic>> getJSONEncrypted(
     return { data: json };
   }
  */
+
+class SetEncryptedJSONResponse {
+  // final bool success;
+  final String skylink;
+  SetEncryptedJSONResponse(
+      {/* required this.success, */ required this.skylink});
+}
+
 /**
    * Sets Encrypted JSON at the given path through MySky, if the user has given Write permissions to do so.
    *
@@ -165,7 +177,7 @@ Future<DataWithRevision<dynamic>> getJSONEncrypted(
    * @param [customOptions] - Additional settings that can optionally be set.
    * @returns - An object containing the original json data.
    */
-Future<bool> setEncryptedJSON(
+Future<SetEncryptedJSONResponse> setEncryptedJSON(
   SkynetUser skynetUser, // Derived from discoverable seed
   String path,
   dynamic jsonData,
@@ -257,7 +269,11 @@ Future<bool> setEncryptedJSON(
     hashedDatakey: dataKey,
   );
 
-  return updated;
+  if (updated != true) throw 'Updating registry entry failed';
+
+  return SetEncryptedJSONResponse(
+    skylink: skylink,
+  );
 }
 
 Future<DataWithRevision<Uint8List?>> getEncryptedRawData(
@@ -284,7 +300,9 @@ Future<DataWithRevision<Uint8List?>> getEncryptedRawData(
 
     // download the data in that Skylink
     final res = await skynetClient.httpClient.get(
-      Uri.https(skynetClient.portalHost, '$skylink'),
+      Uri.parse(
+        '${skynetClient.portalProtocol}://${skynetClient.portalHost}/$skylink',
+      ),
       headers: skynetClient.headers,
     );
 

@@ -25,6 +25,7 @@ import 'http_client/client_stub.dart'
 
 class SkynetClient {
   late String portalHost;
+  late String portalProtocol = 'https';
 
   late final _SkynetClientUpload upload;
   late final _SkynetClientSkyDB skydb;
@@ -36,6 +37,17 @@ class SkynetClient {
 
   late final BaseClient httpClient;
   late Map<String, String>? headers;
+
+  final trustedDomains = <String>[];
+
+  void addTrustedDomain(String? url) {
+    if (url == null) return;
+    if (url.startsWith('http')) {
+      trustedDomains.add(Uri.parse(url).host);
+    } else {
+      trustedDomains.add(url);
+    }
+  }
 
   void logPath(String path) {
     if (_usedMySkyPaths == null) return;
@@ -56,7 +68,13 @@ class SkynetClient {
 
     httpClient = createClient();
 
-    portalHost = portal;
+    final parts = portal.split('://');
+    if (parts.length == 1) {
+      portalHost = parts.first;
+    } else {
+      portalProtocol = parts.first;
+      portalHost = parts.last;
+    }
 
     upload = _SkynetClientUpload(this);
     skydb = _SkynetClientSkyDB(this);
@@ -126,7 +144,7 @@ class _SkynetClientFile {
         skynetClient: _skynetClient,
       );
 
-  Future<bool> setEncryptedJson(
+  Future<mysky_io_impl.SetEncryptedJSONResponse> setEncryptedJson(
     SkynetUser skynetUser,
     String path,
     dynamic data,
@@ -353,7 +371,8 @@ class _SkynetClientPortalAccount {
   _SkynetClientPortalAccount(this._skynetClient);
 
   Uri _getAccountsApiUri(String path) {
-    return Uri.parse('https://account.${_skynetClient.portalHost}$path');
+    return Uri.parse(
+        '${_skynetClient.portalProtocol}://account.${_skynetClient.portalHost}$path');
   }
 
   Future<Map> getUserInfo() async {

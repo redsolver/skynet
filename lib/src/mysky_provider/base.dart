@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:skynet/src/client.dart';
 import 'package:skynet/src/data_with_revision.dart';
+import 'package:skynet/src/mysky/io.dart';
 import 'package:skynet/src/registry_classes.dart';
 
 abstract class MySkyProvider {
@@ -30,7 +31,7 @@ abstract class MySkyProvider {
     String filename = 'skynet-dart-sdk.json',
   });
 
-  Future<bool> setJSONEncrypted(
+  Future<SetEncryptedJSONResponse> setJSONEncrypted(
     String path,
     dynamic data,
     int revision,

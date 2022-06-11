@@ -19,6 +19,8 @@ class NativeMySkyProvider extends MySkyProvider {
 
   NativeMySkyProvider(this.client) : super(client);
 
+  bool isLoggedIn = false;
+
   late SkynetUser skynetUser;
 
   Future<void> load(
@@ -30,7 +32,7 @@ class NativeMySkyProvider extends MySkyProvider {
   var pendingPermissions = <Permission>[];
 
   Future<bool> checkLogin() async {
-    return true;
+    return isLoggedIn;
   }
 
   Future<void> logout() async {
@@ -78,7 +80,7 @@ class NativeMySkyProvider extends MySkyProvider {
     );
   }
 
-  Future<bool> setJSONEncrypted(
+  Future<mysky_io_impl.SetEncryptedJSONResponse> setJSONEncrypted(
     String path,
     dynamic data,
     int revision,
@@ -165,8 +167,7 @@ class NativeMySkyProvider extends MySkyProvider {
   }
 
   @override
-  Future<Uint8List> signRegistryEntry(RegistryEntry entry, String path) {
-    // TODO: implement signRegistryEntry
-    throw UnimplementedError();
+  Future<Uint8List> signRegistryEntry(RegistryEntry entry, String path) async {
+    return Uint8List.fromList((await skynetUser.sign(entry.hash())).bytes);
   }
 }

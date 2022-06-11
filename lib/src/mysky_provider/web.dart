@@ -56,13 +56,13 @@ class WebMySkyProvider extends MySkyProvider {
     }
 
     iframeUrl =
-        client.resolveSkylink(/* options['debug'] == true */ true // TODO
+        client.resolveSkylink(/* options['debug'] == true */ false // TODO
             ? 'sia://skynet-mysky.hns?debug=true'
             : 'sia://skynet-mysky.hns')!;
 
     final mySkyHost = 'skynet-mysky.hns.${client.portalHost}';
 
-    print(iframeUrl);
+    // print(iframeUrl);
 
     // https://skynet-mysky.hns.siasky.net?debug=true
 
@@ -76,7 +76,7 @@ class WebMySkyProvider extends MySkyProvider {
 
     iframe = document.getElementsByName(iframeUrl)[0] as IFrameElement;
 
-    print(iframe);
+    // print(iframe);
     final handshakeCompleter = Completer<bool>();
     window.addEventListener('message', (event) {
       final e = event as MessageEvent;
@@ -84,7 +84,7 @@ class WebMySkyProvider extends MySkyProvider {
       final origin = Uri.parse(e.origin);
       if (origin.host != mySkyHost) return;
 
-      print('> wrapper ${e.data}');
+      // print('> wrapper ${e.data}');
 
       final type = e.data['type'];
       if (type != '@post-me') return;
@@ -240,7 +240,7 @@ class WebMySkyProvider extends MySkyProvider {
     final cWindow = getProperty(iframeElement, 'contentWindow'); */
 
         while (!handshakeCompleter.isCompleted) {
-          print('send "handshake-request"');
+          // print('send "handshake-request"');
           final data = {
             'type': "@post-me",
             'action': "handshake-request",
@@ -269,7 +269,7 @@ class WebMySkyProvider extends MySkyProvider {
           'type': "@post-me",
         };
 
-        print('Dart->MySkyUI: $data');
+        // print('Dart->MySkyUI: $data');
 
         uiWindow!.postMessage(
           data,
@@ -370,7 +370,7 @@ print('catchError $e');
       'type': "@post-me",
     };
 
-    print('Dart->MySky: $data');
+    // print('Dart->MySky: $data');
 
     // setValue(data, 'args', args);
 
@@ -489,7 +489,7 @@ print('catchError $e');
     );
   }
 
-  Future<bool> setJSONEncrypted(
+  Future<mysky_io_impl.SetEncryptedJSONResponse> setJSONEncrypted(
     String path,
     dynamic data,
     int revision,
