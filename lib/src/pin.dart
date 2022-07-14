@@ -38,7 +38,7 @@ Future<PinResponse> pinSkylink(
     headers: skynetClient.headers,
   );
 
-  if (res.statusCode != 204) {
+  if (res.statusCode != 200) {
     throw 'HTTP ${res.statusCode}: ${res.body}';
   }
 
