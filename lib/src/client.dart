@@ -443,4 +443,25 @@ class _SkynetClientPortalAccount {
 
     return;
   }
+
+  Future<String> createSponsorKey({
+    required String name,
+    required List<String> skylinks,
+  }) async {
+    final payload = {"name": name, "public": "true", "skylinks": skylinks};
+
+    final res = await _skynetClient.httpClient.post(
+      _getAccountsApiUri(
+        '/api/user/apikeys',
+      ),
+      headers: {
+        'content-type': 'application/json',
+      }..addAll(_skynetClient.headers ?? {}),
+      body: json.encode(payload),
+    );
+    if (res.statusCode != 200) {
+      throw 'HTTP ${res.statusCode}: ${res.body}';
+    }
+    return json.decode(res.body)['key'];
+  }
 }
