@@ -10,12 +10,14 @@ Future<String?> uploadFileWithStreamWeb(
   Stream<Uint8List> readStream, {
   required SkynetClient skynetClient,
 }) async {
-  var uri = Uri.https(skynetClient.portalHost, '/skynet/skyfile');
+  var uri = Uri.parse(
+    '${skynetClient.portalProtocol}://${skynetClient.portalHost}/skynet/skyfile',
+  );
 
   final completer = Completer<int>();
 
   final request = HttpRequest();
-  request.withCredentials = true;
+  request.withCredentials = skynetClient.withCredentials;
   request.open('POST', uri.toString());
 
 // upload progress event

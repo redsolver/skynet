@@ -38,6 +38,8 @@ class SkynetClient {
   late final BaseClient httpClient;
   late Map<String, String>? headers;
 
+  bool withCredentials = false;
+
   final trustedDomains = <String>[];
 
   void addTrustedDomain(String? url) {
@@ -65,8 +67,13 @@ class SkynetClient {
     } else {
       headers = null;
     }
+    if (portal == 'skynet.moe') {
+      withCredentials = false;
+    } else {
+      withCredentials = true;
+    }
 
-    httpClient = createClient();
+    httpClient = createClient(withCredentials);
 
     final parts = portal.split('://');
     if (parts.length == 1) {

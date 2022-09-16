@@ -240,7 +240,7 @@ class SkynetTusClientWeb {
       final completer = Completer<int>();
 
       final request = HttpRequest();
-      request.withCredentials = true;
+      request.withCredentials = skynetClient.withCredentials;
 
       /*    void handleEvent(dynamic event) {
         print('handleEvent $event');
